@@ -93,16 +93,26 @@ public class ApiClient {
                 JsonObject json = JsonParser.parseString(response.toString()).getAsJsonObject();
                 WhitelistStatus status = new WhitelistStatus();
                 
+                if (json.has("status") && !json.get("status").isJsonNull()) {
+                    status.setStatus(json.get("status").getAsString());
+                }
+                if (json.has("username") && !json.get("username").isJsonNull()) {
+                    status.setUsername(json.get("username").getAsString());
+                }
+
                 if (json.has("success") && json.get("success").getAsBoolean()) {
-                    status.setFound(true);
-                    
-                    if (json.has("status")) {
-                        status.setStatus(json.get("status").getAsString());
-                    }
-                    if (json.has("username")) {
-                        status.setUsername(json.get("username").getAsString());
+                    // New protocol: backend returns explicit found field.
+                    if (json.has("found") && !json.get("found").isJsonNull()) {
+                        status.setFound(json.get("found").getAsBoolean());
+                    } else {
+                        // Backward compatibility with old protocol.
+                        // If status is present and not "not_registered", conservatively infer found=true.
+                        // Otherwise, explicitly mark as not found.
+                        String responseStatus = status.getStatus();
+                        status.setFound(responseStatus != null && !"not_registered".equalsIgnoreCase(responseStatus));
                     }
                 } else {
+                    // success=false (or missing) should always be treated as not found.
                     status.setFound(false);
                 }
                 
@@ -212,4 +222,3 @@ public class ApiClient {
         }
     }
 }
-
