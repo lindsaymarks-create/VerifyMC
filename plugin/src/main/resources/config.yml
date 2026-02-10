@@ -78,6 +78,7 @@ questionnaire:
   enabled: false
   pass_score: 60
   auto_approve_on_pass: false
+  require_pass_before_register: false
 discord:
   enabled: false
   client_id: ""

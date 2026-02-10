@@ -200,6 +200,8 @@ questionnaire:
   pass_score: 60
   # 问卷通过后是否自动批准用户
   auto_approve_on_pass: false
+  # 是否必须通过问卷后才允许提交注册
+  require_pass_before_register: false
 
 # ----------------------------------------
 # Discord集成（OAuth2）

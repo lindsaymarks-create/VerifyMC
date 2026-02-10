@@ -28,8 +28,7 @@
     "home": "Home",
     "register": "Register",
     "login": "Login",
-    "admin": "Admin",
-    "logout": "Logout"
+    "admin": "Admin"
   },
   "home": {
     "title": "VerifyMC Whitelist System",
@@ -106,7 +105,23 @@
     "rate_limited": "Verification code sent too frequently. Please wait {seconds} seconds before trying again",
     "success": "Registration successful! Please wait for review.",
     "failed": "Registration failed. Please try again.",
-    "usernameExists": "Username already exists"
+    "usernameExists": "Username already exists",
+    "steps": {
+      "basic": "Basic Info",
+      "questionnaire": "Questionnaire",
+      "submit": "Submit"
+    },
+    "actions": {
+      "next_questionnaire": "Next: Questionnaire"
+    },
+    "summary": {
+      "username": "Username",
+      "email": "Email",
+      "questionnaire": "Questionnaire"
+    },
+    "questionnaire": {
+      "required": "You must pass the questionnaire before registration."
+    }
   },
   "login": {
     "title": "Admin Login",
@@ -262,12 +277,6 @@
     "network": "Network connection failed, please check network settings",
     "timeout": "Request timeout, please try again later",
     "unknown": "Unknown error, please try again later"
-  },
-  "nav": {
-    "home": "Home",
-    "register": "Register",
-    "login": "Login",
-    "admin": "Admin"
   },
   "language": {
     "switch": "Switch Language",
