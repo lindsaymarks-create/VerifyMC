@@ -88,14 +88,18 @@ public class WebServer {
         private final boolean passed;
         private final int score;
         private final int passScore;
+        private final JSONArray details;
+        private final boolean manualReviewRequired;
         private final JSONObject answers;
         private final long submittedAt;
         private final long expiresAt;
 
-        private QuestionnaireSubmissionRecord(boolean passed, int score, int passScore, JSONObject answers, long submittedAt, long expiresAt) {
+        private QuestionnaireSubmissionRecord(boolean passed, int score, int passScore, JSONArray details, boolean manualReviewRequired, JSONObject answers, long submittedAt, long expiresAt) {
             this.passed = passed;
             this.score = score;
             this.passScore = passScore;
+            this.details = details;
+            this.manualReviewRequired = manualReviewRequired;
             this.answers = answers;
             this.submittedAt = submittedAt;
             this.expiresAt = expiresAt;
@@ -742,6 +746,10 @@ public class WebServer {
 
                 // Evaluate answers
                 QuestionnaireService.QuestionnaireResult result = questionnaireService.evaluateAnswers(answers);
+                JSONObject resultJson = result.toJson();
+                JSONArray details = resultJson.optJSONArray("details");
+                boolean manualReviewRequired = resultJson.optBoolean("manual_review_required", false);
+
                 long submittedAt = System.currentTimeMillis();
                 long expiresAt = submittedAt + QUESTIONNAIRE_SUBMISSION_TTL_MS;
                 String questionnaireToken = UUID.randomUUID().toString();
@@ -749,6 +757,8 @@ public class WebServer {
                     result.isPassed(),
                     result.getScore(),
                     result.getPassScore(),
+                    details,
+                    manualReviewRequired,
                     answersJson,
                     submittedAt,
                     expiresAt
@@ -758,6 +768,8 @@ public class WebServer {
                 resp.put("passed", result.isPassed());
                 resp.put("score", result.getScore());
                 resp.put("pass_score", result.getPassScore());
+                resp.put("details", details);
+                resp.put("manual_review_required", manualReviewRequired);
                 resp.put("token", questionnaireToken);
                 resp.put("submitted_at", submittedAt);
                 resp.put("expires_at", expiresAt);
