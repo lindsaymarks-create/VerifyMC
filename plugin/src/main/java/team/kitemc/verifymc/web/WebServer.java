@@ -22,6 +22,7 @@ import org.json.JSONObject;
 import java.util.ResourceBundle;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.security.MessageDigest;
@@ -54,6 +55,8 @@ public class WebServer {
     private final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
     private final Pattern UUID_PATTERN = Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
     private static final long TOKEN_EXPIRY_TIME = 3600000; // 1 hour
+    private static final long QUESTIONNAIRE_SUBMISSION_TTL_MS = 10 * 60 * 1000; // 10 minutes
+    private final ConcurrentHashMap<String, QuestionnaireSubmissionRecord> questionnaireSubmissionStore = new ConcurrentHashMap<>();
 
     // Default mainstream email domain whitelist
     private static final java.util.List<String> DEFAULT_EMAIL_DOMAIN_WHITELIST = Arrays.asList(
@@ -77,6 +80,29 @@ public class WebServer {
         this.wsServer = wsServer;
         this.messages = messages;
         this.debug = plugin.getConfig().getBoolean("debug", false);
+    }
+
+
+    private static class QuestionnaireSubmissionRecord {
+        private final boolean passed;
+        private final int score;
+        private final int passScore;
+        private final JSONObject answers;
+        private final long submittedAt;
+        private final long expiresAt;
+
+        private QuestionnaireSubmissionRecord(boolean passed, int score, int passScore, JSONObject answers, long submittedAt, long expiresAt) {
+            this.passed = passed;
+            this.score = score;
+            this.passScore = passScore;
+            this.answers = answers;
+            this.submittedAt = submittedAt;
+            this.expiresAt = expiresAt;
+        }
+
+        private boolean isExpired() {
+            return System.currentTimeMillis() > expiresAt;
+        }
     }
 
     private void debugLog(String msg) {
@@ -292,6 +318,8 @@ public class WebServer {
             JSONObject questionnaire = new JSONObject();
             questionnaire.put("enabled", questionnaireService.isEnabled());
             questionnaire.put("pass_score", questionnaireService.getPassScore());
+            questionnaire.put("auto_approve_on_pass", questionnaireService.isAutoApproveOnPass());
+            questionnaire.put("require_pass_before_register", config.getBoolean("questionnaire.require_pass_before_register", false));
             
             // Discord configuration
             JSONObject discord = new JSONObject();
@@ -635,14 +663,28 @@ public class WebServer {
                 
                 // Evaluate answers
                 QuestionnaireService.QuestionnaireResult result = questionnaireService.evaluateAnswers(answers);
-                
+                long submittedAt = System.currentTimeMillis();
+                long expiresAt = submittedAt + QUESTIONNAIRE_SUBMISSION_TTL_MS;
+                String questionnaireToken = UUID.randomUUID().toString();
+                questionnaireSubmissionStore.put(questionnaireToken, new QuestionnaireSubmissionRecord(
+                    result.isPassed(),
+                    result.getScore(),
+                    result.getPassScore(),
+                    answersJson,
+                    submittedAt,
+                    expiresAt
+                ));
+
                 resp.put("success", true);
                 resp.put("passed", result.isPassed());
                 resp.put("score", result.getScore());
                 resp.put("pass_score", result.getPassScore());
+                resp.put("token", questionnaireToken);
+                resp.put("submitted_at", submittedAt);
+                resp.put("expires_at", expiresAt);
                 resp.put("msg", result.isPassed() ? 
-                    getMsg("questionnaire.passed", language) : 
-                    getMsg("questionnaire.failed", language));
+                    getMsg("questionnaire.passed", language).replace("{score}", String.valueOf(result.getScore())) : 
+                    getMsg("questionnaire.failed", language).replace("{score}", String.valueOf(result.getScore())).replace("{pass_score}", String.valueOf(result.getPassScore())));
                 
             } catch (Exception e) {
                 debugLog("Failed to submit questionnaire: " + e.getMessage());
@@ -741,6 +783,7 @@ public class WebServer {
             String captchaToken = req.optString("captchaToken", "");
             String captchaAnswer = req.optString("captchaAnswer", "");
             String language = req.optString("language", "en");
+            JSONObject questionnaire = req.optJSONObject("questionnaire");
             debugLog("register params: email=" + email + ", code=" + code + ", uuid=" + uuid + ", username=" + username + ", hasPassword=" + !password.isEmpty() + ", hasCaptcha=" + !captchaToken.isEmpty());
 
             // Check if password is required
@@ -843,6 +886,53 @@ public class WebServer {
                 sendJson(exchange, resp);
                 return;
             }
+
+            boolean requireQuestionnairePass = plugin.getConfig().getBoolean("questionnaire.require_pass_before_register", false) && questionnaireService.isEnabled();
+            if (requireQuestionnairePass) {
+                JSONObject questionnaireResp = new JSONObject();
+                if (questionnaire == null) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+
+                boolean passed = questionnaire.optBoolean("passed", false);
+                String questionnaireToken = questionnaire.optString("token", "");
+                long submittedAt = questionnaire.optLong("submitted_at", 0L);
+                long expiresAt = questionnaire.optLong("expires_at", 0L);
+                JSONObject answers = questionnaire.optJSONObject("answers");
+
+                if (!passed || questionnaireToken.isEmpty() || answers == null) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+
+                QuestionnaireSubmissionRecord record = questionnaireSubmissionStore.remove(questionnaireToken);
+                if (record == null) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_missing", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+
+                if (record.isExpired() || System.currentTimeMillis() > expiresAt || submittedAt <= 0 || expiresAt <= submittedAt) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_expired", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+
+                if (!record.passed || !record.answers.similar(answers) || record.submittedAt != submittedAt || record.expiresAt != expiresAt) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_invalid", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+            }
+
             JSONObject resp = new JSONObject();
             
             // Determine verification method based on auth_methods config

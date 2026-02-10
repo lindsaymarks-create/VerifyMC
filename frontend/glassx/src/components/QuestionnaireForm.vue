@@ -105,10 +105,22 @@ const submitted = ref(false)
 const questionnaireEnabled = ref(false)
 const questions = ref<any[]>([])
 const answers = reactive<Record<number, any>>({})
-const result = ref<{ passed: boolean; score: number; pass_score: number }>({
+const result = ref<{
+  passed: boolean
+  score: number
+  pass_score: number
+  answers: Record<string, number[]>
+  token: string
+  submitted_at: number
+  expires_at: number
+}>({
   passed: false,
   score: 0,
-  pass_score: 60
+  pass_score: 60,
+  answers: {},
+  token: '',
+  submitted_at: 0,
+  expires_at: 0
 })
 
 const isFormValid = computed(() => {
@@ -171,12 +183,12 @@ const handleSubmit = async () => {
   
   try {
     // Format answers for submission
-    const formattedAnswers: Record<string, number | number[]> = {}
+    const formattedAnswers: Record<string, number[]> = {}
     for (const [questionId, answer] of Object.entries(answers)) {
       if (Array.isArray(answer)) {
         formattedAnswers[questionId] = answer
       } else {
-        formattedAnswers[questionId] = [answer]
+        formattedAnswers[questionId] = [Number(answer)]
       }
     }
     
@@ -195,7 +207,11 @@ const handleSubmit = async () => {
       result.value = {
         passed: data.passed,
         score: data.score,
-        pass_score: data.pass_score
+        pass_score: data.pass_score,
+        answers: formattedAnswers,
+        token: data.token || '',
+        submitted_at: data.submitted_at || Date.now(),
+        expires_at: data.expires_at || Date.now()
       }
       submitted.value = true
       

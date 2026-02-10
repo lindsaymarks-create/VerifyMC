@@ -37,6 +37,22 @@ export interface ConfigResponse {
     enabled: boolean
     required: boolean
   }
+  questionnaire?: {
+    enabled: boolean
+    pass_score: number
+    auto_approve_on_pass: boolean
+    require_pass_before_register?: boolean
+  }
+}
+
+export interface QuestionnaireSubmission {
+  passed: boolean
+  score: number
+  pass_score: number
+  answers: Record<string, number[]>
+  token: string
+  submitted_at: number
+  expires_at: number
 }
 
 export interface CaptchaResponse {
@@ -65,6 +81,7 @@ export interface RegisterRequest {
   captchaToken?: string
   captchaAnswer?: string
   language: string
+  questionnaire?: QuestionnaireSubmission
 }
 
 export interface RegisterResponse {
