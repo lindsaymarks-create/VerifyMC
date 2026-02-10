@@ -22,10 +22,7 @@
           <p class="text-white/60 mb-2">
             {{ $t('questionnaire.your_score') }}: {{ result.score }} / {{ result.pass_score }}
           </p>
-          <Button v-if="result.passed" class="mt-4" @click="$emit('passed', result)">
-            {{ $t('questionnaire.continue') }}
-          </Button>
-          <Button v-else class="mt-4" @click="resetForm">
+          <Button class="mt-4" @click="resetForm">
             {{ $t('questionnaire.retry') }}
           </Button>
         </div>
@@ -243,7 +240,7 @@ const handleSubmit = async () => {
     const data = await response.json()
 
     if (data.success) {
-      result.value = {
+      const submissionResult = {
         passed: data.passed,
         score: data.score,
         pass_score: data.pass_score,
@@ -252,11 +249,13 @@ const handleSubmit = async () => {
         submitted_at: data.submitted_at || Date.now(),
         expires_at: data.expires_at || Date.now()
       }
-      submitted.value = true
+      result.value = submissionResult
 
       if (data.passed) {
         notification.success(t('questionnaire.passed'), data.msg)
+        emit('passed', submissionResult)
       } else {
+        submitted.value = true
         notification.warning(t('questionnaire.failed'), data.msg)
       }
     } else {

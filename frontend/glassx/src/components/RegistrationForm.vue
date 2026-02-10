@@ -86,22 +86,22 @@
         <QuestionnaireForm @back="currentStep = 'basic'" @skip="onQuestionnaireSkipped" @passed="onQuestionnairePassed" />
       </div>
 
-      <form v-else @submit.prevent="handleSubmit" class="space-y-4 relative z-10">
+      <div v-else class="space-y-4 relative z-10">
         <div class="rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/80">
           <p class="mb-1"><strong>{{ $t('register.summary.username') }}:</strong> {{ form.username }}</p>
           <p class="mb-1"><strong>{{ $t('register.summary.email') }}:</strong> {{ form.email }}</p>
           <p v-if="questionnaireResult"><strong>{{ $t('register.summary.questionnaire') }}:</strong> {{ questionnaireResult.passed ? $t('questionnaire.passed') : $t('questionnaire.failed') }} ({{ questionnaireResult.score }}/{{ questionnaireResult.pass_score }})</p>
         </div>
 
-        <div class="flex gap-3">
-          <button type="button" class="glass-button-secondary flex-1" @click="currentStep = questionnaireRequired ? 'questionnaire' : 'basic'">{{ $t('common.back') }}</button>
-          <button type="submit" :disabled="loading || !isFinalStepValid" class="submit-button flex-1">
-            <div v-if="loading" class="spinner"></div>
-            <span>{{ $t('register.form.submit') }}</span>
-            <div class="button-shine"></div>
-          </button>
+        <div class="rounded-lg border border-white/10 bg-white/5 p-6 text-center">
+          <div v-if="loading" class="flex flex-col items-center gap-3 text-white/70">
+            <div class="spinner"></div>
+            <p>{{ $t('common.loading') }}</p>
+          </div>
+          <p v-else-if="registrationSubmitted" class="text-green-300 font-medium">{{ $t('register.success') }}</p>
+          <p v-else class="text-red-300 font-medium">{{ $t('register.failed') }}</p>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </template>
@@ -123,6 +123,7 @@ const currentStep = ref<RegisterStep>('basic')
 
 const loading = ref(false)
 const sending = ref(false)
+const registrationSubmitted = ref(false)
 const config = ref<ConfigResponse>({
   login: { enable_email: false, email_smtp: '' },
   admin: {},
@@ -263,6 +264,7 @@ const goToQuestionnaire = () => {
     return
   }
   currentStep.value = 'submit'
+  void handleSubmit()
 }
 
 const onQuestionnaireSkipped = () => {
@@ -272,11 +274,13 @@ const onQuestionnaireSkipped = () => {
   }
   questionnaireResult.value = null
   currentStep.value = 'submit'
+  void handleSubmit()
 }
 
-const onQuestionnairePassed = (result: QuestionnaireSubmission) => {
+const onQuestionnairePassed = async (result: QuestionnaireSubmission) => {
   questionnaireResult.value = result
   currentStep.value = 'submit'
+  await handleSubmit()
 }
 
 const cooldownSeconds = ref(0)
@@ -322,6 +326,7 @@ const handleSubmit = async () => {
   validateForm()
   if (!isFinalStepValid.value) return
   loading.value = true
+  registrationSubmitted.value = false
   try {
     const registerData: any = {
       username: form.username,
@@ -340,15 +345,15 @@ const handleSubmit = async () => {
 
     const response = await apiService.register(registerData)
     if (response.success) {
+      registrationSubmitted.value = true
       success(t('register.success'))
-      Object.assign(form, { username: '', email: '', code: '', password: '', captchaAnswer: '' })
-      questionnaireResult.value = null
-      currentStep.value = 'basic'
     } else {
+      registrationSubmitted.value = false
       error(response.msg || t('register.failed'))
       if (captchaEnabled.value) await refreshCaptcha()
     }
   } catch {
+    registrationSubmitted.value = false
     error(t('register.failed'))
     if (captchaEnabled.value) await refreshCaptcha()
   } finally {
