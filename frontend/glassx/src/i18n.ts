@@ -7,7 +7,12 @@ const messages = {
   en,
 }
 
-const savedLanguage = localStorage.getItem("language") || navigator.language.startsWith("zh") ? "zh" : "en"
+const stored = localStorage.getItem("language")
+const savedLanguage = stored === "zh" || stored === "en"
+  ? stored
+  : navigator.language.startsWith("zh")
+    ? "zh"
+    : "en"
 
 const i18n = createI18n({
   legacy: false,
@@ -21,9 +26,9 @@ const i18n = createI18n({
 // i18n.global.setLocaleMessage('zh', { ...i18n.global.getLocaleMessage('zh'), lang: 'zh' })
 // i18n.global.setLocaleMessage('en', { ...i18n.global.getLocaleMessage('en'), lang: 'en' })
 
-export function setLanguage(lang: string) {
+export function setLanguage(lang: "zh" | "en") {
   i18n.global.locale.value = lang
-  localStorage.setItem('language', lang)
+  localStorage.setItem("language", lang)
   document.documentElement.lang = lang
 }
 
