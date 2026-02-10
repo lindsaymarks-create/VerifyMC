@@ -89,9 +89,7 @@ public class QuestionnaireService {
                 questionnaireConfig.save(configFile);
             } else {
                 questionnaireConfig = new YamlConfiguration();
-                questionnaireConfig.set("enabled", false);
-                questionnaireConfig.set("pass_score", 60);
-                questionnaireConfig.set("auto_approve_on_pass", false);
+                questionnaireConfig.set("questions", Collections.emptyList());
                 questionnaireConfig.save(configFile);
             }
             debugLog("Created default questionnaire config");
@@ -101,19 +99,15 @@ public class QuestionnaireService {
     }
 
     public boolean isEnabled() {
-        return plugin.getConfig().getBoolean("questionnaire.enabled", false) ||
-            (questionnaireConfig != null && questionnaireConfig.getBoolean("enabled", false));
+        return plugin.getConfig().getBoolean("questionnaire.enabled", false);
     }
 
     public int getPassScore() {
-        int configScore = plugin.getConfig().getInt("questionnaire.pass_score", -1);
-        if (configScore >= 0) return configScore;
-        return questionnaireConfig != null ? questionnaireConfig.getInt("pass_score", 60) : 60;
+        return plugin.getConfig().getInt("questionnaire.pass_score", 60);
     }
 
     public boolean isAutoApproveOnPass() {
-        return plugin.getConfig().getBoolean("questionnaire.auto_approve_on_pass", false) ||
-            (questionnaireConfig != null && questionnaireConfig.getBoolean("auto_approve_on_pass", false));
+        return plugin.getConfig().getBoolean("questionnaire.auto_approve_on_pass", false);
     }
 
     public JSONObject getQuestionnaire(String language) {

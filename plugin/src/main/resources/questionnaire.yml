@@ -1,13 +1,4 @@
 # Questionnaire Configuration
-# Enable/disable questionnaire feature
-enabled: false
-
-# Minimum score required to pass
-pass_score: 60
-
-# Automatically approve users who pass the questionnaire
-auto_approve_on_pass: false
-
 # Question schema notes:
 #   - type: single_choice | multiple_choice | text
 #           (reserved for future: true_false, fill_blank)
