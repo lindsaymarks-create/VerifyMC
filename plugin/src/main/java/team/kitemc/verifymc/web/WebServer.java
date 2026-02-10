@@ -58,6 +58,7 @@ public class WebServer {
     private static final long TOKEN_EXPIRY_TIME = 3600000; // 1 hour
     private static final long QUESTIONNAIRE_SUBMISSION_TTL_MS = 10 * 60 * 1000; // 10 minutes
     private final ConcurrentHashMap<String, QuestionnaireSubmissionRecord> questionnaireSubmissionStore = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, WindowRateLimitRecord> questionnaireRateLimitStore = new ConcurrentHashMap<>();
 
     // Default mainstream email domain whitelist
     private static final java.util.List<String> DEFAULT_EMAIL_DOMAIN_WHITELIST = Arrays.asList(
@@ -108,6 +109,101 @@ public class WebServer {
         private boolean isExpired() {
             return System.currentTimeMillis() > expiresAt;
         }
+    }
+
+
+
+    private static class WindowRateLimitRecord {
+        private int count;
+        private long windowStart;
+
+        private WindowRateLimitRecord(int count, long windowStart) {
+            this.count = count;
+            this.windowStart = windowStart;
+        }
+    }
+
+    private static class RateLimitDecision {
+        private final boolean allowed;
+        private final long retryAfterMs;
+
+        private RateLimitDecision(boolean allowed, long retryAfterMs) {
+            this.allowed = allowed;
+            this.retryAfterMs = retryAfterMs;
+        }
+    }
+
+    private RateLimitDecision checkQuestionnaireRateLimit(String key, int limit, long windowMs) {
+        if (key == null || key.isBlank() || limit <= 0 || windowMs <= 0) {
+            return new RateLimitDecision(true, 0L);
+        }
+        long now = System.currentTimeMillis();
+        WindowRateLimitRecord rec = questionnaireRateLimitStore.compute(key, (k, old) -> {
+            if (old == null || now - old.windowStart >= windowMs) {
+                return new WindowRateLimitRecord(1, now);
+            }
+            old.count++;
+            return old;
+        });
+        if (rec.count > limit) {
+            long retryAfterMs = windowMs - (now - rec.windowStart);
+            return new RateLimitDecision(false, Math.max(1L, retryAfterMs));
+        }
+        return new RateLimitDecision(true, 0L);
+    }
+
+    private String getClientIp(HttpExchange exchange) {
+        String forwarded = exchange.getRequestHeaders().getFirst("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        if (exchange.getRemoteAddress() != null && exchange.getRemoteAddress().getAddress() != null) {
+            return exchange.getRemoteAddress().getAddress().getHostAddress();
+        }
+        return "unknown";
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || email.isBlank() || !email.contains("@")) {
+            return "";
+        }
+        String[] parts = email.split("@", 2);
+        String local = parts[0];
+        String domain = parts[1];
+        if (local.length() <= 2) {
+            return "**@" + domain;
+        }
+        return local.substring(0, 1) + "***" + local.substring(local.length() - 1) + "@" + domain;
+    }
+
+    private String hashToken(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.substring(0, 12);
+        } catch (NoSuchAlgorithmException e) {
+            return "hash_error";
+        }
+    }
+
+    private void logQuestionnaireCall(String event, String ip, String uuid, String email, String requestId, JSONObject extra) {
+        JSONObject log = new JSONObject();
+        log.put("event", event);
+        log.put("requestId", requestId);
+        log.put("ip", ip);
+        log.put("uuid", uuid != null ? uuid : "");
+        log.put("email", maskEmail(email));
+        if (extra != null) {
+            log.put("extra", extra);
+        }
+        plugin.getLogger().info("[VerifyMC] questionnaire_call=" + log.toString());
     }
 
     private String buildQuestionnaireReviewSummary(JSONArray details) {
@@ -704,6 +800,32 @@ public class WebServer {
             
             JSONObject req = new JSONObject(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             String language = req.optString("language", "en");
+            String requestId = UUID.randomUUID().toString();
+            String clientIp = getClientIp(exchange);
+            String requestUuid = req.optString("uuid", "").trim().toLowerCase();
+            String requestEmail = req.optString("email", "").trim().toLowerCase();
+
+            int ipLimit = plugin.getConfig().getInt("questionnaire.rate_limit.ip.max", 20);
+            int uuidLimit = plugin.getConfig().getInt("questionnaire.rate_limit.uuid.max", 8);
+            int emailLimit = plugin.getConfig().getInt("questionnaire.rate_limit.email.max", 6);
+            long windowMs = plugin.getConfig().getLong("questionnaire.rate_limit.window_ms", 300000L);
+
+            RateLimitDecision ipDecision = checkQuestionnaireRateLimit("q:ip:" + clientIp, ipLimit, windowMs);
+            RateLimitDecision uuidDecision = checkQuestionnaireRateLimit("q:uuid:" + requestUuid, uuidLimit, windowMs);
+            RateLimitDecision emailDecision = checkQuestionnaireRateLimit("q:email:" + requestEmail, emailLimit, windowMs);
+
+            if (!ipDecision.allowed || !uuidDecision.allowed || !emailDecision.allowed) {
+                long retryAfterMs = Math.max(ipDecision.retryAfterMs, Math.max(uuidDecision.retryAfterMs, emailDecision.retryAfterMs));
+                JSONObject resp = new JSONObject();
+                resp.put("success", false);
+                resp.put("msg", "Too many questionnaire submissions, please retry later.");
+                resp.put("retry_after_ms", retryAfterMs);
+                JSONObject extra = new JSONObject();
+                extra.put("retryAfterMs", retryAfterMs);
+                logQuestionnaireCall("rate_limited", clientIp, requestUuid, requestEmail, requestId, extra);
+                sendJson(exchange, resp);
+                return;
+            }
             
             JSONObject resp = new JSONObject();
             try {
@@ -805,9 +927,19 @@ public class WebServer {
                 resp.put("msg", result.isPassed() ? 
                     getMsg("questionnaire.passed", language).replace("{score}", String.valueOf(result.getScore())) : 
                     getMsg("questionnaire.failed", language).replace("{score}", String.valueOf(result.getScore())).replace("{pass_score}", String.valueOf(result.getPassScore())));
+
+                JSONObject extra = new JSONObject();
+                extra.put("passed", result.isPassed());
+                extra.put("score", result.getScore());
+                extra.put("manualReview", manualReviewRequired);
+                extra.put("questionCount", answers.size());
+                logQuestionnaireCall("submitted", clientIp, requestUuid, requestEmail, requestId, extra);
                 
             } catch (Exception e) {
-                debugLog("Failed to submit questionnaire: " + e.getMessage());
+                debugLog("Failed to submit questionnaire requestId=" + requestId + ": " + e.getMessage());
+                JSONObject extra = new JSONObject();
+                extra.put("error", e.getClass().getSimpleName());
+                logQuestionnaireCall("submit_failed", clientIp, requestUuid, requestEmail, requestId, extra);
                 resp.put("success", false);
                 resp.put("msg", "Failed to submit questionnaire: " + e.getMessage());
             }
@@ -873,7 +1005,7 @@ public class WebServer {
             
             // Generate verification code and send email
             String code = codeService.generateCode(email);
-            debugLog("Generated verification code for email: " + email + ", code: " + code);
+            debugLog("Generated verification code for email: " + maskEmail(email) + ", codeHash=" + hashToken(code));
             
             // Get email subject from config.yml, fallback to default if not set
             String emailSubject = plugin.getConfig().getString("email_subject", "VerifyMC Verification Code");
@@ -905,7 +1037,7 @@ public class WebServer {
             String captchaAnswer = req.optString("captchaAnswer", "");
             String language = req.optString("language", "en");
             JSONObject questionnaire = req.optJSONObject("questionnaire");
-            debugLog("register params: email=" + email + ", code=" + code + ", uuid=" + uuid + ", username=" + username + ", hasPassword=" + !password.isEmpty() + ", hasCaptcha=" + !captchaToken.isEmpty());
+            debugLog("register params: email=" + maskEmail(email) + ", codeHash=" + hashToken(code) + ", uuid=" + uuid + ", username=" + username + ", hasPassword=" + !password.isEmpty() + ", hasCaptcha=" + !captchaToken.isEmpty());
 
             // Check if password is required
             if (authmeService.isAuthmeEnabled() && authmeService.isPasswordRequired()) {
@@ -1034,17 +1166,17 @@ public class WebServer {
                     return;
                 }
 
-                if (requireQuestionnairePass && !passed) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
                 QuestionnaireSubmissionRecord record = questionnaireSubmissionStore.remove(questionnaireToken);
                 if (record == null) {
                     questionnaireResp.put("success", false);
                     questionnaireResp.put("msg", getMsg("register.questionnaire_missing", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+
+                if (requireQuestionnairePass && !passed && !record.manualReviewRequired) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
                     sendJson(exchange, questionnaireResp);
                     return;
                 }
@@ -1096,8 +1228,8 @@ public class WebServer {
             // Email verification (if email method is enabled or no captcha)
             if (useEmail || !useCaptcha) {
             if (!codeService.checkCode(email, code)) {
-                debugLog("Verification code check failed: email=" + email + ", code=" + code);
-                plugin.getLogger().warning("[VerifyMC] Registration failed: wrong code, email=" + email + ", code=" + code);
+                debugLog("Verification code check failed: email=" + maskEmail(email) + ", codeHash=" + hashToken(code));
+                plugin.getLogger().warning("[VerifyMC] Registration failed: wrong code, email=" + maskEmail(email) + ", codeHash=" + hashToken(code));
                 resp.put("success", false); 
                 resp.put("msg", getMsg("verify.wrong_code", language));
                     sendJson(exchange, resp);
@@ -1126,9 +1258,10 @@ public class WebServer {
                 debugLog("All checks passed, registering user");
                 QuestionnaireSubmissionRecord submissionRecord = questionnaireSubmissionRecord;
                 boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
+                boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
                 boolean questionnaireAutoApprove = questionnairePassed && questionnaireService.isEnabled() && questionnaireService.isAutoApproveOnPass();
                 boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
-                boolean autoApprove = questionnaireAutoApprove || registerAutoApprove;
+                boolean autoApprove = !manualReviewRequired && (questionnaireAutoApprove || registerAutoApprove);
                 String status = autoApprove ? "approved" : "pending";
 
                 Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
