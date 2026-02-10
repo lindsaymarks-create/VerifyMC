@@ -154,7 +154,9 @@
         "username": "用户名",
         "email": "邮箱",
         "register_time": "注册时间",
-        "actions": "操作"
+        "actions": "操作",
+        "questionnaire_score": "问卷总分",
+        "questionnaire_reason": "问答题评分原因"
       },
       "actions": {
         "approve": "通过",

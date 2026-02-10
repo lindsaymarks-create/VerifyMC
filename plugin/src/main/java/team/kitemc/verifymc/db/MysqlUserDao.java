@@ -27,7 +27,11 @@ public class MysqlUserDao implements UserDao {
                     "email VARCHAR(64)," +
                     "status VARCHAR(16)," +
                     "password VARCHAR(255)," +
-                    "regTime BIGINT)");
+                    "regTime BIGINT," +
+                    "questionnaire_score INT NULL," +
+                    "questionnaire_passed BOOLEAN NULL," +
+                    "questionnaire_review_summary TEXT NULL," +
+                    "questionnaire_scored_at BIGINT NULL)");
             
             // Compatibility handling: Check and add missing fields
             try {
@@ -63,6 +67,32 @@ public class MysqlUserDao implements UserDao {
                 debugLog("Added discord_id column to users table");
             }
             
+            // Check questionnaire audit fields
+            try {
+                stmt.executeQuery("SELECT questionnaire_score FROM users LIMIT 1");
+            } catch (SQLException e) {
+                stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_score INT NULL");
+                debugLog("Added questionnaire_score column to users table");
+            }
+            try {
+                stmt.executeQuery("SELECT questionnaire_passed FROM users LIMIT 1");
+            } catch (SQLException e) {
+                stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_passed BOOLEAN NULL");
+                debugLog("Added questionnaire_passed column to users table");
+            }
+            try {
+                stmt.executeQuery("SELECT questionnaire_review_summary FROM users LIMIT 1");
+            } catch (SQLException e) {
+                stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_review_summary TEXT NULL");
+                debugLog("Added questionnaire_review_summary column to users table");
+            }
+            try {
+                stmt.executeQuery("SELECT questionnaire_scored_at FROM users LIMIT 1");
+            } catch (SQLException e) {
+                stmt.executeUpdate("ALTER TABLE users ADD COLUMN questionnaire_scored_at BIGINT NULL");
+                debugLog("Added questionnaire_scored_at column to users table");
+            }
+
             // Check and ensure indexes exist
             try {
                 stmt.executeQuery("SHOW INDEX FROM users WHERE Key_name = 'idx_username'");
@@ -90,6 +120,13 @@ public class MysqlUserDao implements UserDao {
 
     @Override
     public boolean registerUser(String uuid, String username, String email, String status) {
+        return registerUser(uuid, username, email, status, null, null, null, null);
+    }
+
+    @Override
+    public boolean registerUser(String uuid, String username, String email, String status,
+                                Integer questionnaireScore, Boolean questionnairePassed,
+                                String questionnaireReviewSummary, Long questionnaireScoredAt) {
         // First check if user already exists
         String checkSql = "SELECT uuid FROM users WHERE uuid = ?";
         try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
@@ -103,14 +140,18 @@ public class MysqlUserDao implements UserDao {
             debugLog("Error checking existing user: " + e.getMessage());
             return false;
         }
-        
-        String sql = "INSERT INTO users (uuid, username, email, status, regTime) VALUES (?, ?, ?, ?, ?)";
+
+        String sql = "INSERT INTO users (uuid, username, email, status, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, uuid);
             ps.setString(2, username);
             ps.setString(3, email);
             ps.setString(4, status);
             ps.setLong(5, System.currentTimeMillis());
+            if (questionnaireScore != null) ps.setInt(6, questionnaireScore); else ps.setNull(6, Types.INTEGER);
+            if (questionnairePassed != null) ps.setBoolean(7, questionnairePassed); else ps.setNull(7, Types.BOOLEAN);
+            ps.setString(8, questionnaireReviewSummary);
+            if (questionnaireScoredAt != null) ps.setLong(9, questionnaireScoredAt); else ps.setNull(9, Types.BIGINT);
             ps.executeUpdate();
             debugLog("User registered: " + username);
             return true;
@@ -122,6 +163,13 @@ public class MysqlUserDao implements UserDao {
 
     @Override
     public boolean registerUser(String uuid, String username, String email, String status, String password) {
+        return registerUser(uuid, username, email, status, password, null, null, null, null);
+    }
+
+    @Override
+    public boolean registerUser(String uuid, String username, String email, String status, String password,
+                                Integer questionnaireScore, Boolean questionnairePassed,
+                                String questionnaireReviewSummary, Long questionnaireScoredAt) {
         // First check if user already exists
         String checkSql = "SELECT uuid FROM users WHERE uuid = ?";
         try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
@@ -135,8 +183,8 @@ public class MysqlUserDao implements UserDao {
             debugLog("Error checking existing user: " + e.getMessage());
             return false;
         }
-        
-        String sql = "INSERT INTO users (uuid, username, email, status, password, regTime) VALUES (?, ?, ?, ?, ?, ?)";
+
+        String sql = "INSERT INTO users (uuid, username, email, status, password, regTime, questionnaire_score, questionnaire_passed, questionnaire_review_summary, questionnaire_scored_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, uuid);
             ps.setString(2, username);
@@ -144,6 +192,10 @@ public class MysqlUserDao implements UserDao {
             ps.setString(4, status);
             ps.setString(5, password);
             ps.setLong(6, System.currentTimeMillis());
+            if (questionnaireScore != null) ps.setInt(7, questionnaireScore); else ps.setNull(7, Types.INTEGER);
+            if (questionnairePassed != null) ps.setBoolean(8, questionnairePassed); else ps.setNull(8, Types.BOOLEAN);
+            ps.setString(9, questionnaireReviewSummary);
+            if (questionnaireScoredAt != null) ps.setLong(10, questionnaireScoredAt); else ps.setNull(10, Types.BIGINT);
             ps.executeUpdate();
             debugLog("User registered with password: " + username);
             return true;
@@ -199,6 +251,10 @@ public class MysqlUserDao implements UserDao {
                 user.put("password", rs.getString("password"));
                 user.put("regTime", rs.getLong("regTime"));
                 user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                 result.add(user);
             }
         } catch (SQLException e) {
@@ -221,6 +277,10 @@ public class MysqlUserDao implements UserDao {
                 user.put("password", rs.getString("password"));
                 user.put("regTime", rs.getLong("regTime"));
                 user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                 result.add(user);
             }
         } catch (SQLException e) {
@@ -244,6 +304,10 @@ public class MysqlUserDao implements UserDao {
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
                     user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                     return user;
                 }
             }
@@ -268,6 +332,10 @@ public class MysqlUserDao implements UserDao {
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
                     user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                     return user;
                 }
             }
@@ -335,6 +403,10 @@ public class MysqlUserDao implements UserDao {
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
                     user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                     result.add(user);
                 }
             }
@@ -398,6 +470,10 @@ public class MysqlUserDao implements UserDao {
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
                     user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                     result.add(user);
                 }
             }
@@ -510,6 +586,10 @@ public class MysqlUserDao implements UserDao {
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
                     user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                     result.add(user);
                 }
             }
@@ -556,6 +636,10 @@ public class MysqlUserDao implements UserDao {
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
                     user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                     result.add(user);
                 }
             }
@@ -600,6 +684,10 @@ public class MysqlUserDao implements UserDao {
                     user.put("password", rs.getString("password"));
                     user.put("regTime", rs.getLong("regTime"));
                     user.put("discord_id", rs.getString("discord_id"));
+                user.put("questionnaire_score", rs.getObject("questionnaire_score"));
+                user.put("questionnaire_passed", rs.getObject("questionnaire_passed"));
+                user.put("questionnaire_review_summary", rs.getString("questionnaire_review_summary"));
+                user.put("questionnaire_scored_at", rs.getObject("questionnaire_scored_at"));
                     debugLog("User found with Discord ID: " + user.get("username"));
                     return user;
                 }

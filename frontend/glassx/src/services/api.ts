@@ -112,6 +112,8 @@ export interface PendingUser {
   email: string
   status: string
   regTime: string
+  questionnaire_score?: number | null
+  questionnaire_review_summary?: string | null
 }
 
 export interface PendingListResponse {

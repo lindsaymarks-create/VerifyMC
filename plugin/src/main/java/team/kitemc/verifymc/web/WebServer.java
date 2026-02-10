@@ -110,6 +110,35 @@ public class WebServer {
         }
     }
 
+    private String buildQuestionnaireReviewSummary(JSONArray details) {
+        if (details == null || details.isEmpty()) {
+            return null;
+        }
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        for (int i = 0; i < details.length(); i++) {
+            JSONObject detail = details.optJSONObject(i);
+            if (detail == null) {
+                continue;
+            }
+            String type = detail.optString("type", "");
+            if (!"text".equalsIgnoreCase(type)) {
+                continue;
+            }
+            int questionId = detail.optInt("question_id", -1);
+            int score = detail.optInt("score", 0);
+            int maxScore = detail.optInt("max_score", 0);
+            String reason = detail.optString("reason", "").trim();
+            if (reason.isEmpty()) {
+                reason = "N/A";
+            }
+            parts.add("Q" + questionId + "(" + score + "/" + maxScore + "): " + reason);
+        }
+        if (parts.isEmpty()) {
+            return null;
+        }
+        return String.join(" | ", parts);
+    }
+
     private void debugLog(String msg) {
         if (debug) plugin.getLogger().info("[DEBUG] " + msg);
     }
@@ -979,8 +1008,11 @@ public class WebServer {
                 return;
             }
 
-            boolean requireQuestionnairePass = plugin.getConfig().getBoolean("questionnaire.require_pass_before_register", false) && questionnaireService.isEnabled();
-            if (requireQuestionnairePass) {
+            QuestionnaireSubmissionRecord questionnaireSubmissionRecord = null;
+            boolean questionnaireEnabled = questionnaireService.isEnabled();
+            boolean requireQuestionnairePass = plugin.getConfig().getBoolean("questionnaire.require_pass_before_register", false) && questionnaireEnabled;
+            boolean hasQuestionnairePayload = questionnaireEnabled && questionnaire != null && questionnaire.length() > 0;
+            if (requireQuestionnairePass || hasQuestionnairePayload) {
                 JSONObject questionnaireResp = new JSONObject();
                 if (questionnaire == null) {
                     questionnaireResp.put("success", false);
@@ -995,7 +1027,14 @@ public class WebServer {
                 long expiresAt = questionnaire.optLong("expires_at", 0L);
                 JSONObject answers = questionnaire.optJSONObject("answers");
 
-                if (!passed || questionnaireToken.isEmpty() || answers == null) {
+                if (questionnaireToken.isEmpty() || answers == null) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+
+                if (requireQuestionnairePass && !passed) {
                     questionnaireResp.put("success", false);
                     questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
                     sendJson(exchange, questionnaireResp);
@@ -1017,12 +1056,14 @@ public class WebServer {
                     return;
                 }
 
-                if (!record.passed || !record.answers.similar(answers) || record.submittedAt != submittedAt || record.expiresAt != expiresAt) {
+                if (!record.answers.similar(answers) || record.submittedAt != submittedAt || record.expiresAt != expiresAt) {
                     questionnaireResp.put("success", false);
                     questionnaireResp.put("msg", getMsg("register.questionnaire_invalid", language));
                     sendJson(exchange, questionnaireResp);
                     return;
                 }
+
+                questionnaireSubmissionRecord = record;
             }
 
             JSONObject resp = new JSONObject();
@@ -1083,15 +1124,24 @@ public class WebServer {
                 }
                 
                 debugLog("All checks passed, registering user");
-                boolean autoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
+                QuestionnaireSubmissionRecord submissionRecord = questionnaireSubmissionRecord;
+                boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
+                boolean questionnaireAutoApprove = questionnairePassed && questionnaireService.isEnabled() && questionnaireService.isAutoApproveOnPass();
+                boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
+                boolean autoApprove = questionnaireAutoApprove || registerAutoApprove;
                 String status = autoApprove ? "approved" : "pending";
+
+                Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
+                Boolean questionnairePassedValue = submissionRecord != null ? submissionRecord.passed : null;
+                String questionnaireReviewSummary = submissionRecord != null ? buildQuestionnaireReviewSummary(submissionRecord.details) : null;
+                Long questionnaireScoredAt = submissionRecord != null ? submissionRecord.submittedAt : null;
                 boolean ok;
-                
+
                 // Choose registration method based on whether password is provided
                 if (password != null && !password.trim().isEmpty()) {
-                    ok = userDao.registerUser(uuid, username, email, status, password);
+                    ok = userDao.registerUser(uuid, username, email, status, password, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
                 } else {
-                    ok = userDao.registerUser(uuid, username, email, status);
+                    ok = userDao.registerUser(uuid, username, email, status, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
                 }
                 
                 debugLog("registerUser result: " + ok);
@@ -1112,7 +1162,17 @@ public class WebServer {
                     plugin.getLogger().warning("[VerifyMC] Registration failed: userDao.registerUser returned false, uuid=" + uuid + ", username=" + username + ", email=" + email);
                 }
                 resp.put("success", ok);
-                resp.put("msg", ok ? getMsg("register.success", language) : getMsg("register.failed", language));
+                if (ok) {
+                    if (questionnaireAutoApprove) {
+                        resp.put("msg", getMsg("register.questionnaire_auto_approved", language));
+                    } else if (questionnairePassed) {
+                        resp.put("msg", getMsg("register.questionnaire_pending_review", language));
+                    } else {
+                        resp.put("msg", getMsg("register.success", language));
+                    }
+                } else {
+                    resp.put("msg", getMsg("register.failed", language));
+                }
             }
             sendJson(exchange, resp);
         });
@@ -1189,6 +1249,8 @@ public class WebServer {
                 for (Map<String, Object> user : users) {
                     if (!user.containsKey("regTime")) user.put("regTime", null);
                     if (!user.containsKey("email")) user.put("email", "");
+                    if (!user.containsKey("questionnaire_score")) user.put("questionnaire_score", null);
+                    if (!user.containsKey("questionnaire_review_summary")) user.put("questionnaire_review_summary", null);
                 }
                 resp.put("success", true);
                 resp.put("users", users);
@@ -1409,6 +1471,8 @@ public class WebServer {
                 for (Map<String, Object> user : users) {
                     if (!user.containsKey("regTime")) user.put("regTime", null);
                     if (!user.containsKey("email")) user.put("email", "");
+                    if (!user.containsKey("questionnaire_score")) user.put("questionnaire_score", null);
+                    if (!user.containsKey("questionnaire_review_summary")) user.put("questionnaire_review_summary", null);
                 }
                 
                 // Calculate pagination info

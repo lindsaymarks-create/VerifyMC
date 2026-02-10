@@ -97,6 +97,23 @@ public class FileUserDao implements UserDao {
                             hasUpgraded = true;
                             debugLog("Added missing discord_id field for user: " + user.get("username"));
                         }
+
+                        if (!user.containsKey("questionnaire_score")) {
+                            user.put("questionnaire_score", null);
+                            hasUpgraded = true;
+                        }
+                        if (!user.containsKey("questionnaire_passed")) {
+                            user.put("questionnaire_passed", null);
+                            hasUpgraded = true;
+                        }
+                        if (!user.containsKey("questionnaire_review_summary")) {
+                            user.put("questionnaire_review_summary", null);
+                            hasUpgraded = true;
+                        }
+                        if (!user.containsKey("questionnaire_scored_at")) {
+                            user.put("questionnaire_scored_at", null);
+                            hasUpgraded = true;
+                        }
                     }
                 }
                 
@@ -127,8 +144,24 @@ public class FileUserDao implements UserDao {
         }
     }
 
+
+    private void applyQuestionnaireAuditFields(Map<String, Object> user, Integer questionnaireScore, Boolean questionnairePassed,
+                                               String questionnaireReviewSummary, Long questionnaireScoredAt) {
+        user.put("questionnaire_score", questionnaireScore);
+        user.put("questionnaire_passed", questionnairePassed);
+        user.put("questionnaire_review_summary", questionnaireReviewSummary);
+        user.put("questionnaire_scored_at", questionnaireScoredAt);
+    }
+
     @Override
     public boolean registerUser(String uuid, String username, String email, String status) {
+        return registerUser(uuid, username, email, status, null, null, null, null);
+    }
+
+    @Override
+    public boolean registerUser(String uuid, String username, String email, String status,
+                                Integer questionnaireScore, Boolean questionnairePassed,
+                                String questionnaireReviewSummary, Long questionnaireScoredAt) {
         debugLog("registerUser called: uuid=" + uuid + ", username=" + username + ", email=" + email + ", status=" + status);
         try {
             // Check if user already exists
@@ -136,13 +169,14 @@ public class FileUserDao implements UserDao {
                 debugLog("User already exists with UUID: " + uuid + ", skipping registration");
                 return false;
             }
-            
+
             Map<String, Object> user = new HashMap<>();
             user.put("uuid", uuid);
             user.put("username", username);
             user.put("email", email);
             user.put("status", status);
             user.put("regTime", System.currentTimeMillis());
+            applyQuestionnaireAuditFields(user, questionnaireScore, questionnairePassed, questionnaireReviewSummary, questionnaireScoredAt);
             debugLog("Adding user to map: " + user);
             users.put(uuid, user);
             save();
@@ -156,6 +190,13 @@ public class FileUserDao implements UserDao {
 
     @Override
     public boolean registerUser(String uuid, String username, String email, String status, String password) {
+        return registerUser(uuid, username, email, status, password, null, null, null, null);
+    }
+
+    @Override
+    public boolean registerUser(String uuid, String username, String email, String status, String password,
+                                Integer questionnaireScore, Boolean questionnairePassed,
+                                String questionnaireReviewSummary, Long questionnaireScoredAt) {
         debugLog("registerUser with password called: uuid=" + uuid + ", username=" + username + ", email=" + email + ", status=" + status);
         try {
             // Check if user already exists
@@ -163,7 +204,7 @@ public class FileUserDao implements UserDao {
                 debugLog("User already exists with UUID: " + uuid + ", skipping registration");
                 return false;
             }
-            
+
             Map<String, Object> user = new HashMap<>();
             user.put("uuid", uuid);
             user.put("username", username);
@@ -171,6 +212,7 @@ public class FileUserDao implements UserDao {
             user.put("status", status);
             user.put("password", password);
             user.put("regTime", System.currentTimeMillis());
+            applyQuestionnaireAuditFields(user, questionnaireScore, questionnairePassed, questionnaireReviewSummary, questionnaireScoredAt);
             debugLog("Adding user with password to map: " + user);
             users.put(uuid, user);
             save();
