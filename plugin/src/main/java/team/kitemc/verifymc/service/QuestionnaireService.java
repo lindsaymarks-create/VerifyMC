@@ -36,13 +36,21 @@ public class QuestionnaireService {
     private EssayScoringService buildScoringService() {
         String provider = plugin.getConfig().getString("llm.provider", "deepseek").toLowerCase(Locale.ROOT);
         OpenAICompatibleScoringProvider.LlmScoringConfig config = new OpenAICompatibleScoringProvider.LlmScoringConfig(
+            provider,
             plugin.getConfig().getString("llm.api_base", "https://api.deepseek.com/v1"),
             plugin.getConfig().getString("llm.api_key", ""),
             plugin.getConfig().getString("llm.model", "deepseek-chat"),
             plugin.getConfig().getInt("llm.timeout", 10000),
             plugin.getConfig().getInt("llm.retry", 1),
             plugin.getConfig().getString("llm.system_prompt", "You are an impartial questionnaire scorer. Return JSON only."),
-            plugin.getConfig().getString("llm.score_format", "{\"score\": number, \"reason\": string, \"confidence\": number}")
+            plugin.getConfig().getString("llm.score_format", "{\"score\": number, \"reason\": string, \"confidence\": number}"),
+            plugin.getConfig().getInt("llm.max_concurrency", 4),
+            plugin.getConfig().getInt("llm.acquire_timeout", 1500),
+            plugin.getConfig().getInt("llm.retry_backoff_base", 300),
+            plugin.getConfig().getInt("llm.retry_backoff_max", 5000),
+            plugin.getConfig().getInt("llm.circuit_breaker.failure_threshold", 5),
+            plugin.getConfig().getInt("llm.circuit_breaker.open_ms", 30000),
+            plugin.getConfig().getInt("llm.input_max_length", 2000)
         );
 
         if ("google".equals(provider)) {
@@ -209,7 +217,7 @@ public class QuestionnaireService {
                 QuestionAnswer answer = answers.get(questionId);
 
                 if (answer == null) {
-                    details.add(new QuestionScoreDetail(questionId, questionType, 0, resolveMaxScore(questionMap), "No answer submitted", 0.0D, false));
+                    details.add(new QuestionScoreDetail(questionId, questionType, 0, resolveMaxScore(questionMap), "No answer submitted", 0.0D, false, "local", "", "", 0L, 0));
                     continue;
                 }
 
@@ -249,7 +257,7 @@ public class QuestionnaireService {
         }
 
         questionScore = Math.max(0, Math.min(maxScore, questionScore));
-        return new QuestionScoreDetail(questionId, answer.getType(), questionScore, maxScore, "Locally scored", 1.0D, false);
+        return new QuestionScoreDetail(questionId, answer.getType(), questionScore, maxScore, "Locally scored", 1.0D, false, "local", "", "", 0L, 0);
     }
 
     private QuestionScoreDetail scoreTextQuestion(Map<String, Object> questionMap, QuestionAnswer answer, int questionId) {
@@ -273,7 +281,12 @@ public class QuestionnaireService {
             maxScore,
             result.getReason(),
             result.getConfidence(),
-            result.isManualReview()
+            result.isManualReview(),
+            result.getProvider(),
+            result.getModel(),
+            result.getRequestId(),
+            result.getLatencyMs(),
+            result.getRetryCount()
         );
     }
 
@@ -353,8 +366,14 @@ public class QuestionnaireService {
         private final String reason;
         private final double confidence;
         private final boolean manualReview;
+        private final String provider;
+        private final String model;
+        private final String requestId;
+        private final long latencyMs;
+        private final int retryCount;
 
-        public QuestionScoreDetail(int questionId, String type, int score, int maxScore, String reason, double confidence, boolean manualReview) {
+        public QuestionScoreDetail(int questionId, String type, int score, int maxScore, String reason, double confidence, boolean manualReview,
+                                   String provider, String model, String requestId, long latencyMs, int retryCount) {
             this.questionId = questionId;
             this.type = type;
             this.score = score;
@@ -362,6 +381,11 @@ public class QuestionnaireService {
             this.reason = reason;
             this.confidence = confidence;
             this.manualReview = manualReview;
+            this.provider = provider;
+            this.model = model;
+            this.requestId = requestId;
+            this.latencyMs = latencyMs;
+            this.retryCount = retryCount;
         }
 
         public int getQuestionId() { return questionId; }
@@ -375,6 +399,11 @@ public class QuestionnaireService {
             json.put("reason", reason);
             json.put("confidence", confidence);
             json.put("manual_review", manualReview);
+            json.put("provider", provider);
+            json.put("model", model);
+            json.put("request_id", requestId);
+            json.put("latency_ms", latencyMs);
+            json.put("retry_count", retryCount);
             return json;
         }
     }
