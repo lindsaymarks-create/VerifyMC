@@ -45,11 +45,17 @@ export interface ConfigResponse {
   }
 }
 
+export interface QuestionnaireAnswer {
+  type: string
+  selectedOptionIds: number[]
+  textAnswer: string
+}
+
 export interface QuestionnaireSubmission {
   passed: boolean
   score: number
   pass_score: number
-  answers: Record<string, number[]>
+  answers: Record<string, QuestionnaireAnswer>
   token: string
   submitted_at: number
   expires_at: number

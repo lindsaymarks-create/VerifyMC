@@ -18,6 +18,7 @@ import team.kitemc.verifymc.service.CaptchaService;
 import team.kitemc.verifymc.service.QuestionnaireService;
 import team.kitemc.verifymc.service.DiscordService;
 import org.bukkit.plugin.Plugin;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ResourceBundle;
 import java.util.List;
@@ -250,6 +251,46 @@ public class WebServer {
     private JSONObject withCopyright(JSONObject obj) {
         obj.put("copyright", "Powered by VerifyMC (GPLv3)");
         return obj;
+    }
+
+
+    private boolean isSupportedQuestionType(String type) {
+        return "single_choice".equals(type) || "multiple_choice".equals(type) || "text".equals(type);
+    }
+
+    private void validateAnswer(JSONObject questionDef, String answerType, List<Integer> selectedOptionIds, String textAnswer, int questionId) {
+        boolean required = questionDef.optBoolean("required", false);
+        JSONObject input = questionDef.optJSONObject("input");
+        int minSelections = input != null ? input.optInt("min_selections", 0) : 0;
+        int maxSelections = input != null ? input.optInt("max_selections", Integer.MAX_VALUE) : Integer.MAX_VALUE;
+        int minLength = input != null ? input.optInt("min_length", 0) : 0;
+        int maxLength = input != null ? input.optInt("max_length", Integer.MAX_VALUE) : Integer.MAX_VALUE;
+
+        if ("single_choice".equals(answerType) || "multiple_choice".equals(answerType)) {
+            JSONArray options = questionDef.optJSONArray("options");
+            int optionCount = options != null ? options.length() : 0;
+            if (required && selectedOptionIds.isEmpty()) {
+                throw new IllegalArgumentException("Question " + questionId + " is required");
+            }
+            if (selectedOptionIds.size() < minSelections || selectedOptionIds.size() > maxSelections) {
+                throw new IllegalArgumentException("Invalid selection count for question: " + questionId);
+            }
+            for (Integer optionId : selectedOptionIds) {
+                if (optionId == null || optionId < 0 || optionId >= optionCount) {
+                    throw new IllegalArgumentException("Invalid option id for question: " + questionId);
+                }
+            }
+        } else if ("text".equals(answerType)) {
+            String normalized = textAnswer != null ? textAnswer.trim() : "";
+            if (required && normalized.isEmpty()) {
+                throw new IllegalArgumentException("Question " + questionId + " is required");
+            }
+            if (!normalized.isEmpty() && (normalized.length() < minLength || normalized.length() > maxLength)) {
+                throw new IllegalArgumentException("Invalid text length for question: " + questionId);
+            }
+        } else {
+            throw new IllegalArgumentException("Unsupported question type: " + answerType);
+        }
     }
 
     public void start() throws IOException {
@@ -642,25 +683,63 @@ public class WebServer {
                     return;
                 }
                 
-                // Convert answers to Map<Integer, List<Integer>>
-                java.util.Map<Integer, java.util.List<Integer>> answers = new java.util.HashMap<>();
+                JSONObject questionnaire = questionnaireService.getQuestionnaire(language);
+                JSONArray questionDefs = questionnaire.optJSONArray("questions");
+                if (questionDefs == null) {
+                    resp.put("success", false);
+                    resp.put("msg", getMsg("questionnaire.answers_required", language));
+                    sendJson(exchange, resp);
+                    return;
+                }
+
+                Map<Integer, JSONObject> questionDefMap = new HashMap<>();
+                for (int i = 0; i < questionDefs.length(); i++) {
+                    JSONObject questionDef = questionDefs.optJSONObject(i);
+                    if (questionDef != null) {
+                        questionDefMap.put(questionDef.optInt("id", -1), questionDef);
+                    }
+                }
+
+                // Convert answers to Map<Integer, AnswerObject>
+                Map<Integer, QuestionnaireService.QuestionAnswer> answers = new HashMap<>();
                 for (String key : answersJson.keySet()) {
                     int questionId = Integer.parseInt(key);
-                    java.util.List<Integer> selectedOptions = new java.util.ArrayList<>();
-                    
-                    Object value = answersJson.get(key);
-                    if (value instanceof org.json.JSONArray) {
-                        org.json.JSONArray arr = (org.json.JSONArray) value;
-                        for (int i = 0; i < arr.length(); i++) {
-                            selectedOptions.add(arr.getInt(i));
-                        }
-                    } else if (value instanceof Number) {
-                        selectedOptions.add(((Number) value).intValue());
+                    JSONObject questionDef = questionDefMap.get(questionId);
+                    if (questionDef == null) {
+                        throw new IllegalArgumentException("Invalid question id: " + questionId);
                     }
-                    
-                    answers.put(questionId, selectedOptions);
+
+                    Object rawAnswer = answersJson.get(key);
+                    if (!(rawAnswer instanceof JSONObject)) {
+                        throw new IllegalArgumentException("Invalid answer object for question: " + questionId);
+                    }
+                    JSONObject answerObj = (JSONObject) rawAnswer;
+
+                    String answerType = answerObj.optString("type", "").trim();
+                    String questionType = questionDef.optString("type", "single_choice");
+                    if (answerType.isEmpty()) {
+                        answerType = questionType;
+                    }
+                    if (!answerType.equals(questionType)) {
+                        throw new IllegalArgumentException("Illegal answer type for question: " + questionId);
+                    }
+                    if (!isSupportedQuestionType(answerType)) {
+                        throw new IllegalArgumentException("Unsupported question type: " + answerType);
+                    }
+
+                    JSONArray selectedArray = answerObj.optJSONArray("selectedOptionIds");
+                    List<Integer> selectedOptionIds = new java.util.ArrayList<>();
+                    if (selectedArray != null) {
+                        for (int i = 0; i < selectedArray.length(); i++) {
+                            selectedOptionIds.add(selectedArray.getInt(i));
+                        }
+                    }
+
+                    String textAnswer = answerObj.optString("textAnswer", "");
+                    validateAnswer(questionDef, answerType, selectedOptionIds, textAnswer, questionId);
+                    answers.put(questionId, new QuestionnaireService.QuestionAnswer(answerType, selectedOptionIds, textAnswer));
                 }
-                
+
                 // Evaluate answers
                 QuestionnaireService.QuestionnaireResult result = questionnaireService.evaluateAnswers(answers);
                 long submittedAt = System.currentTimeMillis();
@@ -694,6 +773,7 @@ public class WebServer {
             sendJson(exchange, resp);
         });
         
+
         // /api/send_code send verification code interface with rate limiting and authentication
         server.createContext("/api/send_code", exchange -> {
             debugLog("/api/send_code called");

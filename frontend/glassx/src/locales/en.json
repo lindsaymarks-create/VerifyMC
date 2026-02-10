@@ -313,7 +313,10 @@
     "multiple_choice": "Multiple choice",
     "answer_all": "Please answer all questions",
     "load_error": "Failed to load questionnaire",
-    "submit_error": "Failed to submit questionnaire"
+    "submit_error": "Failed to submit questionnaire",
+    "text_placeholder": "Please enter your answer",
+    "length_hint": "Length requirement: {min}-{max} characters",
+    "unsupported_type": "Unsupported question type"
   },
   "discord": {
     "link_button": "Link Discord",

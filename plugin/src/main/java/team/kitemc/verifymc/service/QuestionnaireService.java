@@ -15,7 +15,7 @@ import java.util.*;
 
 /**
  * Questionnaire service for handling registration questionnaire
- * Supports single/multiple choice questions with scoring system
+ * Supports single/multiple choice/text questions with scoring system
  */
 public class QuestionnaireService {
     private final Plugin plugin;
@@ -155,7 +155,30 @@ public class QuestionnaireService {
                         questionText = (String) questionMap.getOrDefault("question", "");
                     }
                     question.put("question", questionText);
-                    question.put("type", questionMap.getOrDefault("type", "single_choice"));
+                    String type = String.valueOf(questionMap.getOrDefault("type", "single_choice"));
+                    question.put("type", type);
+                    question.put("required", Boolean.TRUE.equals(questionMap.get("required")));
+
+                    // Type specific input metadata
+                    JSONObject inputMeta = new JSONObject();
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> inputMap = (Map<String, Object>) questionMap.get("input");
+                    if (inputMap != null) {
+                        for (Map.Entry<String, Object> entry : inputMap.entrySet()) {
+                            inputMeta.put(entry.getKey(), entry.getValue());
+                        }
+                    }
+
+                    if ("text".equals(type)) {
+                        if (inputMap != null) {
+                            String placeholder = "zh".equals(language)
+                                ? String.valueOf(inputMap.getOrDefault("placeholder_zh", ""))
+                                : String.valueOf(inputMap.getOrDefault("placeholder_en", ""));
+                            inputMeta.put("placeholder", placeholder);
+                        }
+                    }
+
+                    question.put("input", inputMeta);
                     
                     // Get options
                     @SuppressWarnings("unchecked")
@@ -192,10 +215,10 @@ public class QuestionnaireService {
     
     /**
      * Calculate score based on answers
-     * @param answers Map of question ID to selected option ID(s)
+     * @param answers Map of question ID to answer object
      * @return Calculated score
      */
-    public int calculateScore(Map<Integer, List<Integer>> answers) {
+    public int calculateScore(Map<Integer, QuestionAnswer> answers) {
         if (!isEnabled() || questionnaireConfig == null) {
             return 100; // If questionnaire is disabled, return full score
         }
@@ -210,15 +233,15 @@ public class QuestionnaireService {
                     Map<String, Object> questionMap = (Map<String, Object>) qObj;
                     int questionId = ((Number) questionMap.get("id")).intValue();
                     
-                    List<Integer> selectedOptions = answers.get(questionId);
-                    if (selectedOptions == null || selectedOptions.isEmpty()) {
+                    QuestionAnswer answer = answers.get(questionId);
+                    if (answer == null || answer.getSelectedOptionIds().isEmpty()) {
                         continue;
                     }
                     
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> optionsList = (List<Map<String, Object>>) questionMap.get("options");
                     if (optionsList != null) {
-                        for (int optionId : selectedOptions) {
+                        for (int optionId : answer.getSelectedOptionIds()) {
                             if (optionId >= 0 && optionId < optionsList.size()) {
                                 Map<String, Object> option = optionsList.get(optionId);
                                 Object scoreObj = option.get("score");
@@ -238,10 +261,10 @@ public class QuestionnaireService {
     
     /**
      * Check if user passed the questionnaire
-     * @param answers Map of question ID to selected option ID(s)
+     * @param answers Map of question ID to answer object
      * @return QuestionnaireResult containing pass status and score
      */
-    public QuestionnaireResult evaluateAnswers(Map<Integer, List<Integer>> answers) {
+    public QuestionnaireResult evaluateAnswers(Map<Integer, QuestionAnswer> answers) {
         int score = calculateScore(answers);
         int passScore = getPassScore();
         boolean passed = score >= passScore;
@@ -249,6 +272,30 @@ public class QuestionnaireService {
         debugLog("Questionnaire evaluation: score=" + score + ", passScore=" + passScore + ", passed=" + passed);
         
         return new QuestionnaireResult(passed, score, passScore);
+    }
+
+    public static class QuestionAnswer {
+        private final String type;
+        private final List<Integer> selectedOptionIds;
+        private final String textAnswer;
+
+        public QuestionAnswer(String type, List<Integer> selectedOptionIds, String textAnswer) {
+            this.type = type != null ? type : "";
+            this.selectedOptionIds = selectedOptionIds != null ? new ArrayList<>(selectedOptionIds) : new ArrayList<>();
+            this.textAnswer = textAnswer != null ? textAnswer : "";
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public List<Integer> getSelectedOptionIds() {
+            return Collections.unmodifiableList(selectedOptionIds);
+        }
+
+        public String getTextAnswer() {
+            return textAnswer;
+        }
     }
     
     /**
@@ -299,4 +346,3 @@ public class QuestionnaireService {
         }
     }
 }
-
