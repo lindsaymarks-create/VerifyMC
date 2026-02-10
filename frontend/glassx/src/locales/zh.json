@@ -307,7 +307,10 @@
     "multiple_choice": "可多选",
     "answer_all": "请回答所有问题",
     "load_error": "加载问卷失败",
-    "submit_error": "提交问卷失败"
+    "submit_error": "提交问卷失败",
+    "text_placeholder": "请输入您的回答",
+    "length_hint": "长度要求：{min}-{max} 字符",
+    "unsupported_type": "暂不支持的题型"
   },
   "discord": {
     "link_button": "绑定 Discord",
