@@ -1,6 +1,5 @@
 package team.kitemc.verifymc.service;
 
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -21,13 +20,42 @@ public class QuestionnaireService {
     private final Plugin plugin;
     private final boolean debug;
     private FileConfiguration questionnaireConfig;
-    
+    private final EssayScoringService essayScoringService;
+    private final int llmDefaultMaxScore;
+    private final String llmScoringRule;
+
     public QuestionnaireService(Plugin plugin) {
         this.plugin = plugin;
         this.debug = plugin.getConfig().getBoolean("debug", false);
+        this.essayScoringService = buildScoringService();
+        this.llmDefaultMaxScore = Math.max(1, plugin.getConfig().getInt("llm.max_score", 20));
+        this.llmScoringRule = plugin.getConfig().getString("llm.scoring_rule", "Evaluate relevance, detail and rule-awareness.");
         loadQuestionnaireConfig();
     }
-    
+
+    private EssayScoringService buildScoringService() {
+        String provider = plugin.getConfig().getString("llm.provider", "deepseek").toLowerCase(Locale.ROOT);
+        OpenAICompatibleScoringProvider.LlmScoringConfig config = new OpenAICompatibleScoringProvider.LlmScoringConfig(
+            plugin.getConfig().getString("llm.api_base", "https://api.deepseek.com/v1"),
+            plugin.getConfig().getString("llm.api_key", ""),
+            plugin.getConfig().getString("llm.model", "deepseek-chat"),
+            plugin.getConfig().getInt("llm.timeout", 10000),
+            plugin.getConfig().getInt("llm.retry", 1),
+            plugin.getConfig().getString("llm.system_prompt", "You are an impartial questionnaire scorer. Return JSON only."),
+            plugin.getConfig().getString("llm.score_format", "{\"score\": number, \"reason\": string, \"confidence\": number}")
+        );
+
+        if ("google".equals(provider)) {
+            return new GoogleScoringProvider(plugin, config);
+        }
+        if ("deepseek".equals(provider)) {
+            return new DeepSeekScoringProvider(plugin, config);
+        }
+
+        plugin.getLogger().warning("[VerifyMC] Unknown llm.provider: " + provider + ", fallback to deepseek");
+        return new DeepSeekScoringProvider(plugin, config);
+    }
+
     /**
      * Load questionnaire configuration from file
      */
@@ -40,50 +68,22 @@ public class QuestionnaireService {
         questionnaireConfig = YamlConfiguration.loadConfiguration(configFile);
         debugLog("Questionnaire configuration loaded");
     }
-    
+
     /**
      * Create default questionnaire configuration file
      * @param configFile The config file to create
      */
     private void createDefaultQuestionnaireConfig(File configFile) {
         try {
-            // Try to load from resources
             InputStream is = plugin.getResource("questionnaire.yml");
             if (is != null) {
                 questionnaireConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(is, StandardCharsets.UTF_8));
                 questionnaireConfig.save(configFile);
             } else {
-                // Create minimal default config
                 questionnaireConfig = new YamlConfiguration();
                 questionnaireConfig.set("enabled", false);
                 questionnaireConfig.set("pass_score", 60);
                 questionnaireConfig.set("auto_approve_on_pass", false);
-                
-                // Add example question
-                List<Map<String, Object>> questions = new ArrayList<>();
-                Map<String, Object> q1 = new HashMap<>();
-                q1.put("id", 1);
-                q1.put("question_zh", "您是如何得知本服务器的？");
-                q1.put("question_en", "How did you hear about our server?");
-                q1.put("type", "single_choice");
-                
-                List<Map<String, Object>> options = new ArrayList<>();
-                Map<String, Object> opt1 = new HashMap<>();
-                opt1.put("text_zh", "朋友推荐");
-                opt1.put("text_en", "Friend recommendation");
-                opt1.put("score", 10);
-                options.add(opt1);
-                
-                Map<String, Object> opt2 = new HashMap<>();
-                opt2.put("text_zh", "社交媒体");
-                opt2.put("text_en", "Social media");
-                opt2.put("score", 8);
-                options.add(opt2);
-                
-                q1.put("options", options);
-                questions.add(q1);
-                
-                questionnaireConfig.set("questions", questions);
                 questionnaireConfig.save(configFile);
             }
             debugLog("Created default questionnaire config");
@@ -91,65 +91,46 @@ public class QuestionnaireService {
             debugLog("Failed to create questionnaire config: " + e.getMessage());
         }
     }
-    
-    /**
-     * Check if questionnaire is enabled
-     * @return true if questionnaire is enabled
-     */
+
     public boolean isEnabled() {
-        return plugin.getConfig().getBoolean("questionnaire.enabled", false) || 
-               (questionnaireConfig != null && questionnaireConfig.getBoolean("enabled", false));
+        return plugin.getConfig().getBoolean("questionnaire.enabled", false) ||
+            (questionnaireConfig != null && questionnaireConfig.getBoolean("enabled", false));
     }
-    
-    /**
-     * Get minimum passing score
-     * @return Minimum passing score
-     */
+
     public int getPassScore() {
         int configScore = plugin.getConfig().getInt("questionnaire.pass_score", -1);
         if (configScore >= 0) return configScore;
         return questionnaireConfig != null ? questionnaireConfig.getInt("pass_score", 60) : 60;
     }
-    
-    /**
-     * Check if auto-approve is enabled when user passes
-     * @return true if auto-approve on pass is enabled
-     */
+
     public boolean isAutoApproveOnPass() {
         return plugin.getConfig().getBoolean("questionnaire.auto_approve_on_pass", false) ||
-               (questionnaireConfig != null && questionnaireConfig.getBoolean("auto_approve_on_pass", false));
+            (questionnaireConfig != null && questionnaireConfig.getBoolean("auto_approve_on_pass", false));
     }
-    
-    /**
-     * Get questionnaire as JSON for frontend
-     * @param language Language code (zh or en)
-     * @return JSON object containing questionnaire data
-     */
+
     public JSONObject getQuestionnaire(String language) {
         JSONObject result = new JSONObject();
         result.put("enabled", isEnabled());
         result.put("pass_score", getPassScore());
-        
+
         if (!isEnabled() || questionnaireConfig == null) {
             result.put("questions", new JSONArray());
             return result;
         }
-        
+
         List<?> questionsList = questionnaireConfig.getList("questions");
         JSONArray questionsArray = new JSONArray();
-        
+
         if (questionsList != null) {
             for (Object qObj : questionsList) {
                 if (qObj instanceof Map) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> questionMap = (Map<String, Object>) qObj;
                     JSONObject question = new JSONObject();
-                    
+
                     question.put("id", questionMap.get("id"));
-                    
-                    // Get question text based on language
-                    String questionText = "zh".equals(language) ? 
-                        (String) questionMap.get("question_zh") : 
+                    String questionText = "zh".equals(language) ?
+                        (String) questionMap.get("question_zh") :
                         (String) questionMap.get("question_en");
                     if (questionText == null) {
                         questionText = (String) questionMap.getOrDefault("question", "");
@@ -159,7 +140,6 @@ public class QuestionnaireService {
                     question.put("type", type);
                     question.put("required", Boolean.TRUE.equals(questionMap.get("required")));
 
-                    // Type specific input metadata
                     JSONObject inputMeta = new JSONObject();
                     @SuppressWarnings("unchecked")
                     Map<String, Object> inputMap = (Map<String, Object>) questionMap.get("input");
@@ -169,37 +149,31 @@ public class QuestionnaireService {
                         }
                     }
 
-                    if ("text".equals(type)) {
-                        if (inputMap != null) {
-                            String placeholder = "zh".equals(language)
-                                ? String.valueOf(inputMap.getOrDefault("placeholder_zh", ""))
-                                : String.valueOf(inputMap.getOrDefault("placeholder_en", ""));
-                            inputMeta.put("placeholder", placeholder);
-                        }
+                    if ("text".equals(type) && inputMap != null) {
+                        String placeholder = "zh".equals(language)
+                            ? String.valueOf(inputMap.getOrDefault("placeholder_zh", ""))
+                            : String.valueOf(inputMap.getOrDefault("placeholder_en", ""));
+                        inputMeta.put("placeholder", placeholder);
                     }
 
                     question.put("input", inputMeta);
-                    
-                    // Get options
+
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> optionsList = (List<Map<String, Object>>) questionMap.get("options");
                     JSONArray optionsArray = new JSONArray();
-                    
+
                     if (optionsList != null) {
                         int optionIndex = 0;
                         for (Map<String, Object> optMap : optionsList) {
                             JSONObject option = new JSONObject();
                             option.put("id", optionIndex++);
-                            
-                            // Get option text based on language
-                            String optText = "zh".equals(language) ?
-                                (String) optMap.get("text_zh") :
-                                (String) optMap.get("text_en");
+                            String optText = "zh".equals(language)
+                                ? (String) optMap.get("text_zh")
+                                : (String) optMap.get("text_en");
                             if (optText == null) {
                                 optText = (String) optMap.getOrDefault("text", "");
                             }
                             option.put("text", optText);
-                            // Don't expose score to frontend for security
                             optionsArray.put(option);
                         }
                     }
@@ -208,70 +182,149 @@ public class QuestionnaireService {
                 }
             }
         }
-        
+
         result.put("questions", questionsArray);
         return result;
     }
-    
-    /**
-     * Calculate score based on answers
-     * @param answers Map of question ID to answer object
-     * @return Calculated score
-     */
-    public int calculateScore(Map<Integer, QuestionAnswer> answers) {
+
+    public QuestionnaireResult evaluateAnswers(Map<Integer, QuestionAnswer> answers) {
         if (!isEnabled() || questionnaireConfig == null) {
-            return 100; // If questionnaire is disabled, return full score
+            return new QuestionnaireResult(true, 100, getPassScore(), Collections.emptyList());
         }
-        
+
         int totalScore = 0;
+        List<QuestionScoreDetail> details = new ArrayList<>();
         List<?> questionsList = questionnaireConfig.getList("questions");
-        
+
         if (questionsList != null) {
             for (Object qObj : questionsList) {
-                if (qObj instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> questionMap = (Map<String, Object>) qObj;
-                    int questionId = ((Number) questionMap.get("id")).intValue();
-                    
-                    QuestionAnswer answer = answers.get(questionId);
-                    if (answer == null || answer.getSelectedOptionIds().isEmpty()) {
-                        continue;
-                    }
-                    
-                    @SuppressWarnings("unchecked")
-                    List<Map<String, Object>> optionsList = (List<Map<String, Object>>) questionMap.get("options");
-                    if (optionsList != null) {
-                        for (int optionId : answer.getSelectedOptionIds()) {
-                            if (optionId >= 0 && optionId < optionsList.size()) {
-                                Map<String, Object> option = optionsList.get(optionId);
-                                Object scoreObj = option.get("score");
-                                if (scoreObj instanceof Number) {
-                                    totalScore += ((Number) scoreObj).intValue();
-                                }
-                            }
-                        }
+                if (!(qObj instanceof Map)) {
+                    continue;
+                }
+
+                @SuppressWarnings("unchecked")
+                Map<String, Object> questionMap = (Map<String, Object>) qObj;
+                int questionId = ((Number) questionMap.get("id")).intValue();
+                String questionType = String.valueOf(questionMap.getOrDefault("type", "single_choice"));
+                QuestionAnswer answer = answers.get(questionId);
+
+                if (answer == null) {
+                    details.add(new QuestionScoreDetail(questionId, questionType, 0, resolveMaxScore(questionMap), "No answer submitted", 0.0D, false));
+                    continue;
+                }
+
+                if ("text".equalsIgnoreCase(questionType)) {
+                    QuestionScoreDetail detail = scoreTextQuestion(questionMap, answer, questionId);
+                    totalScore += detail.getScore();
+                    details.add(detail);
+                } else {
+                    QuestionScoreDetail detail = scoreChoiceQuestion(questionMap, answer, questionId);
+                    totalScore += detail.getScore();
+                    details.add(detail);
+                }
+            }
+        }
+
+        int passScore = getPassScore();
+        boolean passed = totalScore >= passScore;
+        debugLog("Questionnaire evaluation: score=" + totalScore + ", passScore=" + passScore + ", passed=" + passed);
+        return new QuestionnaireResult(passed, totalScore, passScore, details);
+    }
+
+    private QuestionScoreDetail scoreChoiceQuestion(Map<String, Object> questionMap, QuestionAnswer answer, int questionId) {
+        int questionScore = 0;
+        int maxScore = resolveMaxScore(questionMap);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> optionsList = (List<Map<String, Object>>) questionMap.get("options");
+        if (optionsList != null) {
+            for (int optionId : answer.getSelectedOptionIds()) {
+                if (optionId >= 0 && optionId < optionsList.size()) {
+                    Object scoreObj = optionsList.get(optionId).get("score");
+                    if (scoreObj instanceof Number) {
+                        questionScore += ((Number) scoreObj).intValue();
                     }
                 }
             }
         }
-        
-        debugLog("Calculated questionnaire score: " + totalScore);
-        return totalScore;
+
+        questionScore = Math.max(0, Math.min(maxScore, questionScore));
+        return new QuestionScoreDetail(questionId, answer.getType(), questionScore, maxScore, "Locally scored", 1.0D, false);
     }
-    
-    /**
-     * Check if user passed the questionnaire
-     * @param answers Map of question ID to answer object
-     * @return QuestionnaireResult containing pass status and score
-     */
-    public QuestionnaireResult evaluateAnswers(Map<Integer, QuestionAnswer> answers) {
-        int score = calculateScore(answers);
-        int passScore = getPassScore();
-        boolean passed = score >= passScore;
-        
-        debugLog("Questionnaire evaluation: score=" + score + ", passScore=" + passScore + ", passed=" + passed);
-        
-        return new QuestionnaireResult(passed, score, passScore);
+
+    private QuestionScoreDetail scoreTextQuestion(Map<String, Object> questionMap, QuestionAnswer answer, int questionId) {
+        int maxScore = resolveMaxScore(questionMap);
+        String questionText = resolveQuestionText(questionMap);
+        String scoringRule = resolveScoringRule(questionMap);
+
+        EssayScoringService.EssayScoringRequest request = new EssayScoringService.EssayScoringRequest(
+            questionId,
+            questionText,
+            answer.getTextAnswer(),
+            scoringRule,
+            maxScore
+        );
+
+        EssayScoringService.EssayScoringResult result = essayScoringService.score(request);
+        return new QuestionScoreDetail(
+            questionId,
+            answer.getType(),
+            result.getScore(),
+            maxScore,
+            result.getReason(),
+            result.getConfidence(),
+            result.isManualReview()
+        );
+    }
+
+
+    private String resolveQuestionText(Map<String, Object> questionMap) {
+        String zh = String.valueOf(questionMap.getOrDefault("question_zh", "")).trim();
+        String en = String.valueOf(questionMap.getOrDefault("question_en", "")).trim();
+        if (!zh.isEmpty() && !en.isEmpty()) {
+            return "[ZH] " + zh + "\n[EN] " + en;
+        }
+        return !zh.isEmpty() ? zh : en;
+    }
+
+    private String resolveScoringRule(Map<String, Object> questionMap) {
+        Object localRule = questionMap.get("scoring_rule");
+        if (localRule instanceof String && !((String) localRule).trim().isEmpty()) {
+            return ((String) localRule).trim();
+        }
+        return llmScoringRule;
+    }
+
+    private int resolveMaxScore(Map<String, Object> questionMap) {
+        Object configured = questionMap.get("max_score");
+        if (configured instanceof Number) {
+            return Math.max(1, ((Number) configured).intValue());
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> optionsList = (List<Map<String, Object>>) questionMap.get("options");
+        if (optionsList != null && !optionsList.isEmpty()) {
+            int total = 0;
+            for (Map<String, Object> option : optionsList) {
+                Object scoreObj = option.get("score");
+                if (scoreObj instanceof Number) {
+                    total += ((Number) scoreObj).intValue();
+                }
+            }
+            return Math.max(1, total);
+        }
+
+        return llmDefaultMaxScore;
+    }
+
+    public void reload() {
+        loadQuestionnaireConfig();
+    }
+
+    private void debugLog(String msg) {
+        if (debug) {
+            plugin.getLogger().info("[DEBUG] QuestionnaireService: " + msg);
+        }
     }
 
     public static class QuestionAnswer {
@@ -285,63 +338,86 @@ public class QuestionnaireService {
             this.textAnswer = textAnswer != null ? textAnswer : "";
         }
 
-        public String getType() {
-            return type;
+        public String getType() { return type; }
+
+        public List<Integer> getSelectedOptionIds() { return Collections.unmodifiableList(selectedOptionIds); }
+
+        public String getTextAnswer() { return textAnswer; }
+    }
+
+    public static class QuestionScoreDetail {
+        private final int questionId;
+        private final String type;
+        private final int score;
+        private final int maxScore;
+        private final String reason;
+        private final double confidence;
+        private final boolean manualReview;
+
+        public QuestionScoreDetail(int questionId, String type, int score, int maxScore, String reason, double confidence, boolean manualReview) {
+            this.questionId = questionId;
+            this.type = type;
+            this.score = score;
+            this.maxScore = maxScore;
+            this.reason = reason;
+            this.confidence = confidence;
+            this.manualReview = manualReview;
         }
 
-        public List<Integer> getSelectedOptionIds() {
-            return Collections.unmodifiableList(selectedOptionIds);
+        public int getQuestionId() { return questionId; }
+        public int getScore() { return score; }
+        public JSONObject toJson() {
+            JSONObject json = new JSONObject();
+            json.put("question_id", questionId);
+            json.put("type", type);
+            json.put("score", score);
+            json.put("max_score", maxScore);
+            json.put("reason", reason);
+            json.put("confidence", confidence);
+            json.put("manual_review", manualReview);
+            return json;
         }
+    }
 
-        public String getTextAnswer() {
-            return textAnswer;
-        }
-    }
-    
-    /**
-     * Reload questionnaire configuration
-     */
-    public void reload() {
-        loadQuestionnaireConfig();
-    }
-    
-    private void debugLog(String msg) {
-        if (debug) {
-            plugin.getLogger().info("[DEBUG] QuestionnaireService: " + msg);
-        }
-    }
-    
-    /**
-     * Result class for questionnaire evaluation
-     */
     public static class QuestionnaireResult {
         private final boolean passed;
         private final int score;
         private final int passScore;
-        
-        public QuestionnaireResult(boolean passed, int score, int passScore) {
+        private final List<QuestionScoreDetail> details;
+
+        public QuestionnaireResult(boolean passed, int score, int passScore, List<QuestionScoreDetail> details) {
             this.passed = passed;
             this.score = score;
             this.passScore = passScore;
+            this.details = details != null ? new ArrayList<>(details) : new ArrayList<>();
         }
-        
-        public boolean isPassed() {
-            return passed;
+
+        public boolean isPassed() { return passed; }
+        public int getScore() { return score; }
+        public int getPassScore() { return passScore; }
+        public List<QuestionScoreDetail> getDetails() { return Collections.unmodifiableList(details); }
+
+        public boolean isManualReviewRequired() {
+            for (QuestionScoreDetail detail : details) {
+                if (detail.manualReview) {
+                    return true;
+                }
+            }
+            return false;
         }
-        
-        public int getScore() {
-            return score;
-        }
-        
-        public int getPassScore() {
-            return passScore;
-        }
-        
+
         public JSONObject toJson() {
             JSONObject json = new JSONObject();
             json.put("passed", passed);
             json.put("score", score);
             json.put("pass_score", passScore);
+            json.put("manual_review_required", isManualReviewRequired());
+
+            JSONArray detailArray = new JSONArray();
+            for (QuestionScoreDetail detail : details) {
+                detailArray.put(detail.toJson());
+            }
+            json.put("details", detailArray);
             return json;
         }
     }

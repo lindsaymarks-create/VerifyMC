@@ -17,6 +17,9 @@ auto_approve_on_pass: false
 #       * text: multiline, min_length, max_length, placeholder_en, placeholder_zh
 #   - options: required by single_choice / multiple_choice
 #       * text_en / text_zh / score
+#   - text questions may optionally define:
+#       * max_score: per-question max score
+#       * scoring_rule: override global llm.scoring_rule
 
 questions:
   - id: 1
@@ -115,6 +118,8 @@ questions:
     question_zh: "请简要说明您想加入本服务器的原因。"
     type: text
     required: true
+    max_score: 20
+    scoring_rule: "Evaluate relevance, detail, and understanding of server rules."
     input:
       multiline: true
       min_length: 10
