@@ -19,9 +19,12 @@
       <div class="relative z-10 flex items-center justify-center gap-2 mb-6 text-xs md:text-sm">
         <div class="step-chip" :class="currentStep === 'basic' ? 'step-chip-active' : ''">1. {{ $t('register.steps.basic') }}</div>
         <div class="step-separator"></div>
-        <div class="step-chip" :class="currentStep === 'questionnaire' ? 'step-chip-active' : ''">2. {{ $t('register.steps.questionnaire') }}</div>
-        <div class="step-separator"></div>
-        <div class="step-chip" :class="currentStep === 'submit' ? 'step-chip-active' : ''">3. {{ $t('register.steps.submit') }}</div>
+        <template v-if="questionnaireEnabled">
+          <div class="step-chip" :class="currentStep === 'questionnaire' ? 'step-chip-active' : ''">2. {{ $t('register.steps.questionnaire') }}</div>
+          <div class="step-separator"></div>
+          <div class="step-chip" :class="currentStep === 'submit' ? 'step-chip-active' : ''">3. {{ $t('register.steps.submit') }}</div>
+        </template>
+        <div v-else class="step-chip" :class="currentStep === 'submit' ? 'step-chip-active' : ''">2. {{ $t('register.steps.submit') }}</div>
       </div>
 
       <form v-if="currentStep === 'basic'" @submit.prevent="goToQuestionnaire" class="space-y-5 relative z-10">
@@ -77,7 +80,7 @@
         </div>
 
         <button type="submit" :disabled="!isBasicStepValid" class="submit-button">
-          <span>{{ $t('register.actions.next_questionnaire') }}</span>
+          <span>{{ questionnaireEnabled ? $t('register.actions.next_questionnaire') : $t('register.steps.submit') }}</span>
           <div class="button-shine"></div>
         </button>
       </form>
