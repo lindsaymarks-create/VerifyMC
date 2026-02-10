@@ -154,7 +154,9 @@
         "username": "Username",
         "email": "Email",
         "register_time": "Register Time",
-        "actions": "Actions"
+        "actions": "Actions",
+        "questionnaire_score": "Questionnaire Score",
+        "questionnaire_reason": "Questionnaire Review Reason"
       },
       "actions": {
         "approve": "Approve",
