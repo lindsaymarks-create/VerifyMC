@@ -215,6 +215,21 @@ llm:
   timeout: 10000
   # Retry count when parsing/network call fails
   retry: 1
+  # Maximum concurrent LLM requests (protects API and server load)
+  max_concurrency: 4
+  # Max wait time to acquire a concurrency slot in milliseconds
+  acquire_timeout: 1500
+  # Base backoff delay for retries in milliseconds
+  retry_backoff_base: 300
+  # Maximum backoff delay for retries in milliseconds
+  retry_backoff_max: 5000
+  # Maximum input length sent to the model in characters
+  input_max_length: 2000
+  circuit_breaker:
+    # Threshold to open circuit breaker (consecutive failures)
+    failure_threshold: 5
+    # How long the circuit remains open in milliseconds
+    open_ms: 30000
   # Fixed system prompt (combined with question, answer and scoring rule)
   system_prompt: |
     You are a fair Minecraft whitelist questionnaire grader.
