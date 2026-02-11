@@ -63,6 +63,10 @@
     "title": "Whitelist Registration",
     "subtitle": "Apply to join our Minecraft server whitelist",
     "form": {
+      "platform": "Game Edition",
+      "platform_java": "Java",
+      "platform_bedrock": "Bedrock",
+      "bedrock_hint": "Bedrock players will be submitted with prefix {prefix}",
       "username": "Username",
       "username_placeholder": "Enter your game username",
       "email": "Email Address",

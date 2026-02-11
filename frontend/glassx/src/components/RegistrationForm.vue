@@ -29,10 +29,35 @@
 
       <form v-if="currentStep === 'basic'" @submit.prevent="goToQuestionnaire" class="space-y-5 relative z-10">
         <div class="space-y-3">
+          <div v-if="bedrockEnabled" class="space-y-2">
+            <label class="block text-sm font-medium text-white">{{ $t('register.form.platform') }}</label>
+            <div class="platform-toggle" role="radiogroup" :aria-label="$t('register.form.platform')">
+              <button
+                type="button"
+                class="platform-option"
+                :class="platformMode === 'java' ? 'platform-option-active' : ''"
+                @click="setPlatformMode('java')"
+              >
+                {{ $t('register.form.platform_java') }}
+              </button>
+              <button
+                type="button"
+                class="platform-option"
+                :class="platformMode === 'bedrock' ? 'platform-option-active' : ''"
+                @click="setPlatformMode('bedrock')"
+              >
+                {{ $t('register.form.platform_bedrock') }}
+              </button>
+            </div>
+          </div>
+
           <div>
             <label for="username" class="block text-sm font-medium text-white mb-1">{{ $t('register.form.username') }}</label>
             <input id="username" v-model="form.username" type="text" :placeholder="$t('register.form.username_placeholder')" class="glass-input" :class="{ 'glass-input-error': errors.username }" @blur="validateUsername" />
             <p v-if="errors.username" class="mt-1 text-sm text-red-400">{{ errors.username }}</p>
+            <p v-if="bedrockEnabled && platformMode === 'bedrock'" class="mt-1 text-xs text-white/60">
+              {{ $t('register.form.bedrock_hint', { prefix: bedrockPrefix }) }}
+            </p>
           </div>
 
           <div>
@@ -145,6 +170,15 @@ const emailEnabled = computed(() => config.value.captcha?.email_enabled !== fals
 const discordLinked = ref(false)
 const discordEnabled = computed(() => config.value.discord?.enabled || false)
 const discordRequired = computed(() => config.value.discord?.required || false)
+const platformMode = ref<'java' | 'bedrock'>('java')
+const bedrockEnabled = computed(() => config.value.bedrock?.enabled || false)
+const bedrockPrefix = computed(() => config.value.bedrock?.prefix || '.')
+const currentUsernameRegex = computed(() => {
+  if (bedrockEnabled.value && platformMode.value === 'bedrock') {
+    return config.value.bedrock?.username_regex || '^\\.[a-zA-Z0-9_\\s]{3,16}$'
+  }
+  return config.value.frontend?.username_regex || '^[a-zA-Z0-9_]+$'
+})
 
 const questionnaireResult = ref<QuestionnaireSubmission | null>(null)
 const questionnaireEnabled = computed(() => config.value.questionnaire?.enabled || false)
@@ -159,6 +193,9 @@ onMounted(async () => {
     config.value = res
     if (config.value.captcha?.enabled) {
       await refreshCaptcha()
+    }
+    if (config.value.bedrock?.enabled) {
+      platformMode.value = 'java'
     }
   } catch (e) {
     console.error('Failed to load config:', e)
@@ -198,11 +235,22 @@ const validateUsername = () => {
   errors.username = ''
   if (!form.username) {
     errors.username = t('register.validation.username_required')
-  } else if (config.value.frontend?.username_regex && !new RegExp(config.value.frontend.username_regex).test(form.username)) {
-    errors.username = t('register.validation.username_format', { regex: config.value.frontend.username_regex })
-  } else if (!config.value.frontend?.username_regex && !/^[a-zA-Z0-9_]+$/.test(form.username)) {
-    errors.username = t('register.validation.username_format', { regex: '^[a-zA-Z0-9_]+$' })
+    return
   }
+
+  let usernameToCheck = form.username
+  if (bedrockEnabled.value && platformMode.value === 'bedrock' && !usernameToCheck.startsWith(bedrockPrefix.value)) {
+    usernameToCheck = `${bedrockPrefix.value}${usernameToCheck}`
+  }
+
+  if (!new RegExp(currentUsernameRegex.value).test(usernameToCheck)) {
+    errors.username = t('register.validation.username_format', { regex: currentUsernameRegex.value })
+  }
+}
+
+const setPlatformMode = (mode: 'java' | 'bedrock') => {
+  platformMode.value = mode
+  validateUsername()
 }
 const validateEmail = () => {
   errors.email = ''
@@ -340,6 +388,10 @@ const handleSubmit = async () => {
       language: locale.value
     }
 
+    if (bedrockEnabled.value && platformMode.value === 'bedrock' && !registerData.username.startsWith(bedrockPrefix.value)) {
+      registerData.username = `${bedrockPrefix.value}${registerData.username}`
+    }
+
     if (emailEnabled.value) registerData.code = form.code
     if (captchaEnabled.value) {
       registerData.captchaToken = captchaToken.value
@@ -399,4 +451,8 @@ function generateUUID() {
 .step-chip { color: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); border-radius: 9999px; padding: .25rem .65rem; }
 .step-chip-active { color: #fff; border-color: rgba(59,130,246,.8); background: rgba(59,130,246,.2); }
 .step-separator { width: 16px; height: 1px; background: rgba(255,255,255,.3); }
+.platform-toggle { display: inline-flex; width: 100%; border: 1px solid rgba(255,255,255,.18); border-radius: 12px; overflow: hidden; background: rgba(255,255,255,.06); }
+.platform-option { flex: 1; padding: .55rem .75rem; color: rgba(255,255,255,.7); font-size: .875rem; border: 0; background: transparent; cursor: pointer; transition: all .2s ease; }
+.platform-option:hover { background: rgba(255,255,255,.08); color: #fff; }
+.platform-option-active { color: #fff; background: linear-gradient(135deg, rgba(59,130,246,.35), rgba(139,92,246,.35)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); }
 </style>

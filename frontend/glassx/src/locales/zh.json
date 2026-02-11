@@ -63,6 +63,10 @@
     "title": "白名单注册",
     "subtitle": "申请加入我们的 Minecraft 服务器白名单",
     "form": {
+      "platform": "游戏版本",
+      "platform_java": "Java 版",
+      "platform_bedrock": "Bedrock 版",
+      "bedrock_hint": "Bedrock 玩家将自动使用前缀 {prefix}",
       "username": "用户名",
       "username_placeholder": "请输入您的游戏用户名",
       "email": "邮箱地址",
