@@ -1293,6 +1293,8 @@ public class WebServer {
                 if (ok) {
                     if (!autoApprove && questionnairePassed) {
                         resp.put("msg", getMsg("register.questionnaire_pending_review", language));
+                    } else if (autoApprove && questionnairePassed) {
+                        resp.put("msg", getMsg("register.success_whitelisted", language));
                     } else {
                         resp.put("msg", getMsg("register.success", language));
                     }
