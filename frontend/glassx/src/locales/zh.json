@@ -76,6 +76,10 @@
       "password": "密码",
       "password_placeholder": "请输入密码",
       "password_hint": "密码应符合正则表达式：{regex}",
+      "platform": "游戏版本",
+      "platform_java": "Java 版",
+      "platform_bedrock": "基岩版",
+      "platform_bedrock_hint": "基岩版用户名会自动添加前缀：{prefix}",
       "submit": "提交白名单申请"
     },
     "validation": {
