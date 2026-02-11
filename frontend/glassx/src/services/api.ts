@@ -43,6 +43,11 @@ export interface ConfigResponse {
     auto_approve_on_pass: boolean
     require_pass_before_register?: boolean
   }
+  bedrock?: {
+    enabled: boolean
+    prefix: string
+    username_regex: string
+  }
 }
 
 export interface QuestionnaireAnswer {
@@ -286,11 +291,11 @@ class ApiService {
       page: page.toString(),
       pageSize: pageSize.toString(),
     });
-    
+
     if (search.trim()) {
       params.append('search', search.trim());
     }
-    
+
     return this.request(`/users-paginated?${params.toString()}`);
   }
 
