@@ -40,7 +40,6 @@ export interface ConfigResponse {
   questionnaire?: {
     enabled: boolean
     pass_score: number
-    require_pass_before_register?: boolean
   }
   bedrock?: {
     enabled: boolean

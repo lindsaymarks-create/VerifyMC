@@ -77,7 +77,6 @@ bedrock:
 questionnaire:
   enabled: false
   pass_score: 60
-  require_pass_before_register: false
   rate_limit:
     window_ms: 300000
     ip:
