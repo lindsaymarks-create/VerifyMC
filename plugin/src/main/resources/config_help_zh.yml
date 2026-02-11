@@ -205,7 +205,7 @@ questionnaire:
 llm:
   # 评分提供方。可选：deepseek / google
   provider: deepseek
-  # OpenAI 兼容接口基础地址（程序会自动拼接 /chat/completions）
+  # OpenAI 兼容接口基础地址，必须使用 https（程序会自动拼接 /chat/completions）
   api_base: https://api.deepseek.com/v1
   # API 密钥
   api_key: ""
