@@ -198,8 +198,6 @@ questionnaire:
   enabled: false
   # 通过所需的最低分数
   pass_score: 60
-  # 是否必须通过问卷后才允许提交注册
-  require_pass_before_register: false
 
 # ----------------------------------------
 # LLM 问答评分（用于 text 问题）

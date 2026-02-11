@@ -133,7 +133,7 @@ const config = ref<ConfigResponse>({
   frontend: { theme: '', logo_url: '', announcement: '', web_server_prefix: '', username_regex: '' },
   authme: { enabled: false, require_password: false, auto_register: false, auto_unregister: false, password_regex: '' },
   captcha: { enabled: false, email_enabled: true, type: 'math' },
-  questionnaire: { enabled: false, pass_score: 60, require_pass_before_register: false }
+  questionnaire: { enabled: false, pass_score: 60 }
 })
 
 const captchaImage = ref('')
@@ -147,7 +147,7 @@ const discordRequired = computed(() => config.value.discord?.required || false)
 
 const questionnaireResult = ref<QuestionnaireSubmission | null>(null)
 const questionnaireEnabled = computed(() => config.value.questionnaire?.enabled || false)
-const questionnaireRequired = computed(() => questionnaireEnabled.value && (config.value.questionnaire?.require_pass_before_register ?? false))
+const questionnaireRequired = computed(() => questionnaireEnabled.value)
 
 const authmeConfig = computed(() => config.value.authme)
 const shouldShowPassword = computed(() => authmeConfig.value?.enabled && authmeConfig.value?.require_password)
@@ -255,14 +255,14 @@ const isBasicStepValid = computed(() => {
 const isFinalStepValid = computed(() => {
   if (!isBasicStepValid.value) return false
   if (!questionnaireEnabled.value) return true
-  if (!questionnaireResult.value) return !questionnaireRequired.value
-  return questionnaireRequired.value ? questionnaireResult.value.passed : true
+  if (!questionnaireResult.value) return false
+  return questionnaireResult.value.passed === true
 })
 
 const goToQuestionnaire = () => {
   validateForm()
   if (!isBasicStepValid.value) return
-  if (questionnaireEnabled.value) {
+  if (questionnaireRequired.value) {
     currentStep.value = 'questionnaire'
     return
   }
@@ -271,7 +271,7 @@ const goToQuestionnaire = () => {
 }
 
 const onQuestionnaireSkipped = () => {
-  if (questionnaireRequired.value) {
+  if (questionnaireEnabled.value) {
     error(t('register.questionnaire.required'))
     return
   }

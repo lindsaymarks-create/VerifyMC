@@ -488,7 +488,6 @@ public class WebServer {
             JSONObject questionnaire = new JSONObject();
             questionnaire.put("enabled", questionnaireService.isEnabled());
             questionnaire.put("pass_score", questionnaireService.getPassScore());
-            questionnaire.put("require_pass_before_register", config.getBoolean("questionnaire.require_pass_before_register", false));
             
             // Discord configuration
             JSONObject discord = new JSONObject();
@@ -1141,9 +1140,7 @@ public class WebServer {
 
             QuestionnaireSubmissionRecord questionnaireSubmissionRecord = null;
             boolean questionnaireEnabled = questionnaireService.isEnabled();
-            boolean requireQuestionnairePass = plugin.getConfig().getBoolean("questionnaire.require_pass_before_register", false) && questionnaireEnabled;
-            boolean hasQuestionnairePayload = questionnaireEnabled && questionnaire != null && questionnaire.length() > 0;
-            if (requireQuestionnairePass || hasQuestionnairePayload) {
+            if (questionnaireEnabled) {
                 JSONObject questionnaireResp = new JSONObject();
                 if (questionnaire == null) {
                     questionnaireResp.put("success", false);
@@ -1173,7 +1170,7 @@ public class WebServer {
                     return;
                 }
 
-                if (requireQuestionnairePass && !passed && !record.manualReviewRequired) {
+                if (!passed) {
                     questionnaireResp.put("success", false);
                     questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
                     sendJson(exchange, questionnaireResp);
