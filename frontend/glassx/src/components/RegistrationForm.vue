@@ -133,7 +133,7 @@ const config = ref<ConfigResponse>({
   frontend: { theme: '', logo_url: '', announcement: '', web_server_prefix: '', username_regex: '' },
   authme: { enabled: false, require_password: false, auto_register: false, auto_unregister: false, password_regex: '' },
   captcha: { enabled: false, email_enabled: true, type: 'math' },
-  questionnaire: { enabled: false, pass_score: 60, auto_approve_on_pass: false, require_pass_before_register: false }
+  questionnaire: { enabled: false, pass_score: 60, require_pass_before_register: false }
 })
 
 const captchaImage = ref('')

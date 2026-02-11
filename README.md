@@ -291,8 +291,6 @@ questionnaire:
   enabled: false
   # Minimum score to pass
   pass_score: 60
-  # Auto-approve users who pass the questionnaire
-  auto_approve_on_pass: false
   # Whether users must pass questionnaire before registration is allowed
   require_pass_before_register: false
 

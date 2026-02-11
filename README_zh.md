@@ -297,8 +297,6 @@ questionnaire:
   enabled: false
   # 通过所需的最低分数
   pass_score: 60
-  # 问卷通过后是否自动批准用户
-  auto_approve_on_pass: false
 
 # ----------------------------------------
 # Discord集成（OAuth2）
