@@ -86,6 +86,7 @@ questionnaire:
     email:
       max: 6
 llm:
+  enabled: true
   provider: deepseek
   api_base: https://api.deepseek.com/v1
   api_key: ""

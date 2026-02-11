@@ -23,6 +23,7 @@ public class QuestionnaireService {
     private final EssayScoringService essayScoringService;
     private final int llmDefaultMaxScore;
     private final String llmScoringRule;
+    private final boolean llmScoringEnabled;
 
     public QuestionnaireService(Plugin plugin) {
         this.plugin = plugin;
@@ -30,6 +31,7 @@ public class QuestionnaireService {
         this.essayScoringService = buildScoringService();
         this.llmDefaultMaxScore = Math.max(1, plugin.getConfig().getInt("llm.max_score", 20));
         this.llmScoringRule = plugin.getConfig().getString("llm.scoring_rule", "Evaluate relevance, detail and rule-awareness.");
+        this.llmScoringEnabled = plugin.getConfig().getBoolean("llm.enabled", true);
         loadQuestionnaireConfig();
     }
 
@@ -253,6 +255,23 @@ public class QuestionnaireService {
 
     private QuestionScoreDetail scoreTextQuestion(Map<String, Object> questionMap, QuestionAnswer answer, int questionId) {
         int maxScore = resolveMaxScore(questionMap);
+        if (!llmScoringEnabled) {
+            return new QuestionScoreDetail(
+                questionId,
+                answer.getType(),
+                0,
+                maxScore,
+                "LLM scoring disabled by config, requires manual review",
+                0.0D,
+                true,
+                "manual",
+                "",
+                "",
+                0L,
+                0
+            );
+        }
+
         String questionText = resolveQuestionText(questionMap);
         String scoringRule = resolveScoringRule(questionMap);
 

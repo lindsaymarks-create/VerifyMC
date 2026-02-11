@@ -203,6 +203,8 @@ questionnaire:
 # LLM Essay Scoring (for text questions)
 # ----------------------------------------
 llm:
+  # Enable LLM auto scoring. When disabled, all text questions require manual review
+  enabled: true
   # Scoring provider. Options: deepseek / google
   provider: deepseek
   # OpenAI-compatible API base URL, must use https (plugin appends /chat/completions automatically)
