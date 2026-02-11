@@ -1276,8 +1276,8 @@ public class WebServer {
                 }
                 
                 debugLog("registerUser result: " + ok);
-                if (ok) {
-                    // Registration successful, automatically add to whitelist
+                if (ok && "approved".equals(status)) {
+                    // Registration successful and approved, automatically add to whitelist
                     debugLog("Execute: whitelist add " + username);
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
@@ -1449,17 +1449,30 @@ public class WebServer {
                 String status = "approve".equals(action) ? "approved" : "rejected";
                 boolean success = userDao.updateUserStatus(uuid, status);
                 
-                if (success && "approve".equals(action) && username != null) {
-                    // Review approved, add to whitelist
-                    debugLog("Execute: whitelist add " + username);
-                    org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
-                        org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
-                    });
-                    
-                    // If Authme integration is enabled and auto registration is enabled, and password exists, register to Authme
-                    if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() && 
-                        password != null && !password.trim().isEmpty()) {
-                        authmeService.registerToAuthme(username, password);
+                if (success && username != null) {
+                    if ("approve".equals(action)) {
+                        // Review approved, add to whitelist
+                        debugLog("Execute: whitelist add " + username);
+                        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                            org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
+                        });
+
+                        // If Authme integration is enabled and auto registration is enabled, and password exists, register to Authme
+                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() &&
+                            password != null && !password.trim().isEmpty()) {
+                            authmeService.registerToAuthme(username, password);
+                        }
+                    } else {
+                        // Review rejected, ensure user is not in whitelist
+                        debugLog("Execute: whitelist remove " + username);
+                        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                            org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + username);
+                        });
+
+                        // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
+                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+                            authmeService.unregisterFromAuthme(username);
+                        }
                     }
                 }
                 
