@@ -121,6 +121,12 @@
     },
     "questionnaire": {
       "required": "You must pass the questionnaire before registration."
+    },
+    "edition": {
+      "java": "Java Edition",
+      "bedrock": "Bedrock Edition",
+      "java_hint": "Java usernames do not require a prefix.",
+      "bedrock_hint": "Bedrock usernames use prefix: {prefix}"
     }
   },
   "login": {

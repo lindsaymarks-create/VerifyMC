@@ -31,7 +31,28 @@
         <div class="space-y-3">
           <div>
             <label for="username" class="block text-sm font-medium text-white mb-1">{{ $t('register.form.username') }}</label>
+            <div v-if="bedrockEnabled" class="mb-2 flex gap-2">
+              <button
+                type="button"
+                class="edition-button"
+                :class="selectedEdition === 'java' ? 'edition-button-active' : ''"
+                @click="setEdition('java')"
+              >
+                {{ $t('register.edition.java') }}
+              </button>
+              <button
+                type="button"
+                class="edition-button"
+                :class="selectedEdition === 'bedrock' ? 'edition-button-active' : ''"
+                @click="setEdition('bedrock')"
+              >
+                {{ $t('register.edition.bedrock') }}
+              </button>
+            </div>
             <input id="username" v-model="form.username" type="text" :placeholder="$t('register.form.username_placeholder')" class="glass-input" :class="{ 'glass-input-error': errors.username }" @blur="validateUsername" />
+            <p v-if="bedrockEnabled" class="mt-1 text-xs text-gray-300">
+              {{ selectedEdition === 'bedrock' ? $t('register.edition.bedrock_hint', { prefix: bedrockPrefix }) : $t('register.edition.java_hint') }}
+            </p>
             <p v-if="errors.username" class="mt-1 text-sm text-red-400">{{ errors.username }}</p>
           </div>
 
@@ -152,11 +173,36 @@ const questionnaireRequired = computed(() => questionnaireEnabled.value)
 
 const authmeConfig = computed(() => config.value.authme)
 const shouldShowPassword = computed(() => authmeConfig.value?.enabled && authmeConfig.value?.require_password)
+const bedrockEnabled = computed(() => config.value.bedrock?.enabled || false)
+const bedrockPrefix = computed(() => config.value.bedrock?.prefix || '.')
+
+type AccountEdition = 'java' | 'bedrock'
+const selectedEdition = ref<AccountEdition>('java')
+
+const setEdition = (edition: AccountEdition) => {
+  if (!bedrockEnabled.value) return
+  selectedEdition.value = edition
+  if (edition === 'bedrock') {
+    const username = form.username.trim()
+    if (!username.startsWith(bedrockPrefix.value)) {
+      form.username = `${bedrockPrefix.value}${username}`
+    }
+    return
+  }
+
+  if (form.username.startsWith(bedrockPrefix.value)) {
+    form.username = form.username.slice(bedrockPrefix.value.length)
+  }
+}
 
 onMounted(async () => {
   try {
     const res = await apiService.getConfig()
     config.value = res
+    if (config.value.bedrock?.enabled) {
+      selectedEdition.value = 'bedrock'
+      setEdition('bedrock')
+    }
     if (config.value.captcha?.enabled) {
       await refreshCaptcha()
     }
@@ -399,4 +445,7 @@ function generateUUID() {
 .step-chip { color: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); border-radius: 9999px; padding: .25rem .65rem; }
 .step-chip-active { color: #fff; border-color: rgba(59,130,246,.8); background: rgba(59,130,246,.2); }
 .step-separator { width: 16px; height: 1px; background: rgba(255,255,255,.3); }
+.edition-button { padding: .4rem .7rem; border-radius: 9999px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: rgba(255,255,255,.8); font-size: .75rem; cursor: pointer; transition: all .2s ease; }
+.edition-button:hover { background: rgba(255,255,255,.14); color: #fff; }
+.edition-button-active { background: rgba(59,130,246,.25); border-color: rgba(59,130,246,.8); color: #fff; }
 </style>

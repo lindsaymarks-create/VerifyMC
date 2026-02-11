@@ -121,6 +121,12 @@
     },
     "questionnaire": {
       "required": "必须先通过问卷后才能注册。"
+    },
+    "edition": {
+      "java": "Java版",
+      "bedrock": "基岩版",
+      "java_hint": "Java版用户名不需要前缀。",
+      "bedrock_hint": "基岩版用户名会使用前缀：{prefix}"
     }
   },
   "login": {
