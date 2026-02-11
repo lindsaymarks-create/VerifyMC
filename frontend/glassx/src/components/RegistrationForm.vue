@@ -101,7 +101,7 @@
             <div class="spinner"></div>
             <p>{{ $t('common.loading') }}</p>
           </div>
-          <p v-else-if="registrationSubmitted" class="text-green-300 font-medium">{{ $t('register.success') }}</p>
+          <p v-else-if="registrationSubmitted" class="text-green-300 font-medium">{{ registrationSuccessMessage }}</p>
           <p v-else class="text-red-300 font-medium">{{ $t('register.failed') }}</p>
         </div>
       </div>
@@ -127,6 +127,7 @@ const currentStep = ref<RegisterStep>('basic')
 const loading = ref(false)
 const sending = ref(false)
 const registrationSubmitted = ref(false)
+const registrationSuccessMessage = ref('')
 const config = ref<ConfigResponse>({
   login: { enable_email: false, email_smtp: '' },
   admin: {},
@@ -330,6 +331,7 @@ const handleSubmit = async () => {
   if (!isFinalStepValid.value) return
   loading.value = true
   registrationSubmitted.value = false
+  registrationSuccessMessage.value = ""
   try {
     const registerData: any = {
       username: form.username,
@@ -349,7 +351,8 @@ const handleSubmit = async () => {
     const response = await apiService.register(registerData)
     if (response.success) {
       registrationSubmitted.value = true
-      success(t('register.success'))
+      registrationSuccessMessage.value = response.msg || t('register.success')
+      success(registrationSuccessMessage.value)
     } else {
       registrationSubmitted.value = false
       error(response.msg || t('register.failed'))
