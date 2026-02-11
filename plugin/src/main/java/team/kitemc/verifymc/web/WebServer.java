@@ -1149,7 +1149,6 @@ public class WebServer {
                     return;
                 }
 
-                boolean passed = questionnaire.optBoolean("passed", false);
                 String questionnaireToken = questionnaire.optString("token", "");
                 long submittedAt = questionnaire.optLong("submitted_at", 0L);
                 long expiresAt = questionnaire.optLong("expires_at", 0L);
@@ -1170,13 +1169,6 @@ public class WebServer {
                     return;
                 }
 
-                if (!passed) {
-                    questionnaireResp.put("success", false);
-                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
-                    sendJson(exchange, questionnaireResp);
-                    return;
-                }
-
                 if (record.isExpired() || System.currentTimeMillis() > expiresAt || submittedAt <= 0 || expiresAt <= submittedAt) {
                     questionnaireResp.put("success", false);
                     questionnaireResp.put("msg", getMsg("register.questionnaire_expired", language));
@@ -1187,6 +1179,15 @@ public class WebServer {
                 if (!record.answers.similar(answers) || record.submittedAt != submittedAt || record.expiresAt != expiresAt) {
                     questionnaireResp.put("success", false);
                     questionnaireResp.put("msg", getMsg("register.questionnaire_invalid", language));
+                    sendJson(exchange, questionnaireResp);
+                    return;
+                }
+
+                boolean questionnairePassed = record.passed;
+                boolean manualReviewRequired = record.manualReviewRequired;
+                if (!questionnairePassed && !manualReviewRequired) {
+                    questionnaireResp.put("success", false);
+                    questionnaireResp.put("msg", getMsg("register.questionnaire_required", language));
                     sendJson(exchange, questionnaireResp);
                     return;
                 }
@@ -1291,7 +1292,9 @@ public class WebServer {
                 }
                 resp.put("success", ok);
                 if (ok) {
-                    if (!autoApprove && questionnairePassed) {
+                    if (!autoApprove && manualReviewRequired && !questionnairePassed) {
+                        resp.put("msg", getMsg("register.questionnaire_scoring_error_pending_review", language));
+                    } else if (!autoApprove && questionnairePassed) {
                         resp.put("msg", getMsg("register.questionnaire_pending_review", language));
                     } else if (autoApprove && questionnairePassed) {
                         resp.put("msg", getMsg("register.success_whitelisted", language));

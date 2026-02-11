@@ -203,6 +203,8 @@ questionnaire:
 # LLM 问答评分（用于 text 问题）
 # ----------------------------------------
 llm:
+  # 是否启用 LLM 自动评分。关闭后 text 题将全部转人工审核
+  enabled: true
   # 评分提供方。可选：deepseek / google
   provider: deepseek
   # OpenAI 兼容接口基础地址，必须使用 https（程序会自动拼接 /chat/completions）
