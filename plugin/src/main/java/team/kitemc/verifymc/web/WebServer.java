@@ -488,7 +488,6 @@ public class WebServer {
             JSONObject questionnaire = new JSONObject();
             questionnaire.put("enabled", questionnaireService.isEnabled());
             questionnaire.put("pass_score", questionnaireService.getPassScore());
-            questionnaire.put("auto_approve_on_pass", questionnaireService.isAutoApproveOnPass());
             questionnaire.put("require_pass_before_register", config.getBoolean("questionnaire.require_pass_before_register", false));
             
             // Discord configuration
@@ -1259,9 +1258,8 @@ public class WebServer {
                 QuestionnaireSubmissionRecord submissionRecord = questionnaireSubmissionRecord;
                 boolean questionnairePassed = submissionRecord != null && submissionRecord.passed;
                 boolean manualReviewRequired = submissionRecord != null && submissionRecord.manualReviewRequired;
-                boolean questionnaireAutoApprove = questionnairePassed && questionnaireService.isEnabled() && questionnaireService.isAutoApproveOnPass();
                 boolean registerAutoApprove = plugin.getConfig().getBoolean("register.auto_approve", false);
-                boolean autoApprove = !manualReviewRequired && (questionnaireAutoApprove || registerAutoApprove);
+                boolean autoApprove = !manualReviewRequired && registerAutoApprove;
                 String status = autoApprove ? "approved" : "pending";
 
                 Integer questionnaireScore = submissionRecord != null ? submissionRecord.score : null;
@@ -1296,9 +1294,7 @@ public class WebServer {
                 }
                 resp.put("success", ok);
                 if (ok) {
-                    if (questionnaireAutoApprove) {
-                        resp.put("msg", getMsg("register.questionnaire_auto_approved", language));
-                    } else if (questionnairePassed) {
+                    if (!autoApprove && questionnairePassed) {
                         resp.put("msg", getMsg("register.questionnaire_pending_review", language));
                     } else {
                         resp.put("msg", getMsg("register.success", language));

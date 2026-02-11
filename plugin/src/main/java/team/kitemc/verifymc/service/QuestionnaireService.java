@@ -106,9 +106,6 @@ public class QuestionnaireService {
         return plugin.getConfig().getInt("questionnaire.pass_score", 60);
     }
 
-    public boolean isAutoApproveOnPass() {
-        return plugin.getConfig().getBoolean("questionnaire.auto_approve_on_pass", false);
-    }
 
     public JSONObject getQuestionnaire(String language) {
         JSONObject result = new JSONObject();
