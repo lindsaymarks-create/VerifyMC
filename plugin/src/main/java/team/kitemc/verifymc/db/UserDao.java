@@ -13,6 +13,13 @@ public interface UserDao {
      * @return true if registration successful
      */
     boolean registerUser(String uuid, String username, String email, String status);
+
+    /**
+     * Register user (without password) with questionnaire audit data
+     */
+    boolean registerUser(String uuid, String username, String email, String status,
+                         Integer questionnaireScore, Boolean questionnairePassed,
+                         String questionnaireReviewSummary, Long questionnaireScoredAt);
     
     /**
      * Register user (with password)
@@ -24,6 +31,13 @@ public interface UserDao {
      * @return true if registration successful
      */
     boolean registerUser(String uuid, String username, String email, String status, String password);
+
+    /**
+     * Register user (with password) with questionnaire audit data
+     */
+    boolean registerUser(String uuid, String username, String email, String status, String password,
+                         Integer questionnaireScore, Boolean questionnairePassed,
+                         String questionnaireReviewSummary, Long questionnaireScoredAt);
     
     /**
      * Update user status

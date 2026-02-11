@@ -66,6 +66,30 @@
 2. Start the server to auto-generate config files, then edit `config.yml` as needed (see full example below).
 3. Restart the server and visit `http://your_server_ip:8080` to access the admin panel.
 
+### ✅ Recommended Minimum Environment
+
+- Java 17+
+- Bukkit/Spigot/Paper/Folia 1.20+
+- A public domain with HTTPS enabled (recommended for production)
+- SMTP mailbox account (required when using `email` verification)
+
+### ⚡ 5-Minute Quick Start
+
+1. Set `auth_methods: [captcha]` in `config.yml` (fastest setup, no SMTP required).
+2. Set `whitelist_mode: plugin` and `web_register_url: https://your-domain.com/`.
+3. Configure `admin.password` to a strong password.
+4. (Optional) Enable `register.auto_approve: true` for small private servers.
+5. Restart the server and open `http://your_server_ip:8080`.
+
+### 🧪 Build from Source
+
+```bash
+cd plugin
+mvn clean package
+```
+
+Output jar: `plugin/target/verifymc-<version>.jar`
+
 ```yaml
 # ----------------------------------------
 # General Settings
@@ -269,6 +293,8 @@ questionnaire:
   pass_score: 60
   # Auto-approve users who pass the questionnaire
   auto_approve_on_pass: false
+  # Whether users must pass questionnaire before registration is allowed
+  require_pass_before_register: false
 
 # ----------------------------------------
 # Discord Integration (OAuth2)

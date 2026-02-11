@@ -40,7 +40,30 @@ export interface ConfigResponse {
   questionnaire?: {
     enabled: boolean
     pass_score: number
+    auto_approve_on_pass: boolean
+    require_pass_before_register?: boolean
   }
+  bedrock?: {
+    enabled: boolean
+    prefix: string
+    username_regex: string
+  }
+}
+
+export interface QuestionnaireAnswer {
+  type: string
+  selectedOptionIds: number[]
+  textAnswer: string
+}
+
+export interface QuestionnaireSubmission {
+  passed: boolean
+  score: number
+  pass_score: number
+  answers: Record<string, QuestionnaireAnswer>
+  token: string
+  submitted_at: number
+  expires_at: number
 }
 
 export interface CaptchaResponse {
@@ -69,6 +92,7 @@ export interface RegisterRequest {
   captchaToken?: string
   captchaAnswer?: string
   language: string
+  questionnaire?: QuestionnaireSubmission
 }
 
 export interface RegisterResponse {
@@ -93,6 +117,8 @@ export interface PendingUser {
   email: string
   status: string
   regTime: string
+  questionnaire_score?: number | null
+  questionnaire_review_summary?: string | null
 }
 
 export interface PendingListResponse {

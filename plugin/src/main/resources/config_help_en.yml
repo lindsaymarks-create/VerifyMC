@@ -200,6 +200,40 @@ questionnaire:
   pass_score: 60
   # Auto-approve users who pass the questionnaire
   auto_approve_on_pass: false
+  # Whether users must pass questionnaire before registration is allowed
+  require_pass_before_register: false
+
+# ----------------------------------------
+# LLM Essay Scoring (for text questions)
+# ----------------------------------------
+llm:
+  # Scoring provider. Options: deepseek / google
+  provider: deepseek
+  # OpenAI-compatible API base URL (plugin appends /chat/completions automatically)
+  api_base: https://api.deepseek.com/v1
+  # API key
+  api_key: ""
+  # Model name
+  model: deepseek-chat
+  # Request timeout in milliseconds
+  timeout: 10000
+  # Retry count when parsing/network call fails
+  retry: 1
+  # Fixed system prompt (combined with question, answer and scoring rule)
+  system_prompt: |
+    You are a fair Minecraft whitelist questionnaire grader.
+    Score strictly based on the question, candidate answer, and scoring rule.
+    Return JSON only.
+  # Default maximum score for text questions if question-level max_score is missing
+  max_score: 20
+  # Scoring rule text appended into the user prompt (can be overridden by question-level scoring_rule in questionnaire.yml)
+  scoring_rule: |
+    Evaluate primarily:
+    1) Relevance to the question
+    2) Completeness and level of detail
+    3) Understanding of server rules and community norms
+  # Expected model output schema (JSON)
+  score_format: '{"score": number, "reason": string, "confidence": number}'
 
 # ----------------------------------------
 # Discord Integration (OAuth2)

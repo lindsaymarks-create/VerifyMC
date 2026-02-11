@@ -1,29 +1,26 @@
 # Questionnaire Configuration
-# Enable/disable questionnaire feature
-enabled: false
-
-# Minimum score required to pass
-pass_score: 60
-
-# Automatically approve users who pass the questionnaire
-auto_approve_on_pass: false
-
-# Questions list
-# Each question has:
-#   - id: Unique question ID
-#   - question_en: Question text in English
-#   - question_zh: Question text in Chinese
-#   - type: single_choice or multiple_choice
-#   - options: List of answer options
-#     - text_en: Option text in English
-#     - text_zh: Option text in Chinese
-#     - score: Points awarded for this option
+# Question schema notes:
+#   - type: single_choice | multiple_choice | text
+#           (reserved for future: true_false, fill_blank)
+#   - required: whether this question must be answered
+#   - input: type-specific constraints metadata for frontend/backend validation
+#       * choice-based: min_selections, max_selections
+#       * text: multiline, min_length, max_length, placeholder_en, placeholder_zh
+#   - options: required by single_choice / multiple_choice
+#       * text_en / text_zh / score
+#   - text questions may optionally define:
+#       * max_score: per-question max score
+#       * scoring_rule: override global llm.scoring_rule
 
 questions:
   - id: 1
     question_en: "How did you hear about our server?"
     question_zh: "您是如何得知本服务器的？"
     type: single_choice
+    required: true
+    input:
+      min_selections: 1
+      max_selections: 1
     options:
       - text_en: "Friend recommendation"
         text_zh: "朋友推荐"
@@ -45,6 +42,10 @@ questions:
     question_en: "How long have you been playing Minecraft?"
     question_zh: "您玩 Minecraft 多久了？"
     type: single_choice
+    required: true
+    input:
+      min_selections: 1
+      max_selections: 1
     options:
       - text_en: "Less than 1 year"
         text_zh: "不到1年"
@@ -63,6 +64,10 @@ questions:
     question_en: "Do you agree to follow the server rules?"
     question_zh: "您是否同意遵守服务器规则？"
     type: single_choice
+    required: true
+    input:
+      min_selections: 1
+      max_selections: 1
     options:
       - text_en: "Yes, I will follow all rules"
         text_zh: "是的，我会遵守所有规则"
@@ -78,6 +83,10 @@ questions:
     question_en: "What do you expect to do on the server? (Multiple choice)"
     question_zh: "您期望在服务器中做什么？（可多选）"
     type: multiple_choice
+    required: true
+    input:
+      min_selections: 1
+      max_selections: 3
     options:
       - text_en: "Building"
         text_zh: "建筑创作"
@@ -94,3 +103,21 @@ questions:
       - text_en: "Participating in server events"
         text_zh: "参与服务器活动"
         score: 5
+
+  - id: 5
+    question_en: "Briefly describe why you want to join this server."
+    question_zh: "请简要说明您想加入本服务器的原因。"
+    type: text
+    required: true
+    max_score: 20
+    scoring_rule: "Evaluate relevance, detail, and understanding of server rules."
+    input:
+      multiline: true
+      min_length: 10
+      max_length: 200
+      placeholder_en: "Tell us your motivation..."
+      placeholder_zh: "请简述您的动机..."
+
+# Reserved examples for future expansion:
+#  - type: true_false
+#  - type: fill_blank

@@ -28,8 +28,7 @@
     "home": "首页",
     "register": "注册",
     "login": "登录",
-    "admin": "管理",
-    "logout": "退出登录"
+    "admin": "管理"
   },
   "home": {
     "title": "VerifyMC 白名单系统",
@@ -106,7 +105,23 @@
     "rate_limited": "发送验证码过于频繁，请等待 {seconds} 秒后再试",
     "success": "注册成功！请等待审核。",
     "failed": "注册失败，请重试。",
-    "usernameExists": "用户名已存在"
+    "usernameExists": "用户名已存在",
+    "steps": {
+      "basic": "基础信息",
+      "questionnaire": "问卷",
+      "submit": "提交注册"
+    },
+    "actions": {
+      "next_questionnaire": "下一步：问卷"
+    },
+    "summary": {
+      "username": "用户名",
+      "email": "邮箱",
+      "questionnaire": "问卷结果"
+    },
+    "questionnaire": {
+      "required": "必须先通过问卷后才能注册。"
+    }
   },
   "login": {
     "title": "管理员登录",
@@ -139,7 +154,9 @@
         "username": "用户名",
         "email": "邮箱",
         "register_time": "注册时间",
-        "actions": "操作"
+        "actions": "操作",
+        "questionnaire_score": "问卷总分",
+        "questionnaire_reason": "问答题评分原因"
       },
       "actions": {
         "approve": "通过",
@@ -252,12 +269,6 @@
     "timeout": "请求超时，请稍后重试",
     "unknown": "未知错误，请稍后重试"
   },
-  "nav": {
-    "home": "首页",
-    "register": "注册",
-    "login": "登录",
-    "admin": "管理"
-  },
   "language": {
     "switch": "切换语言",
     "zh": "中文",
@@ -298,7 +309,10 @@
     "multiple_choice": "可多选",
     "answer_all": "请回答所有问题",
     "load_error": "加载问卷失败",
-    "submit_error": "提交问卷失败"
+    "submit_error": "提交问卷失败",
+    "text_placeholder": "请输入您的回答",
+    "length_hint": "长度要求：{min}-{max} 字符",
+    "unsupported_type": "暂不支持的题型"
   },
   "discord": {
     "link_button": "绑定 Discord",

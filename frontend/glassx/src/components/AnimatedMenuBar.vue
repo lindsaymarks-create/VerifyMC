@@ -81,36 +81,51 @@ const route = useRoute()
 const hoveredIndex = ref<number | null>(null)
 const isNavHovered = ref(false)
 
-const menuItems = computed(() => [
-  {
-    icon: Home,
-    label: t('nav.home'),
-    href: '/',
-    gradient: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.06) 50%, rgba(29,78,216,0) 100%)',
-    iconColor: 'text-blue-500',
-  },
-  {
-    icon: UserPlus,
-    label: t('nav.register'),
-    href: '/register',
-    gradient: 'radial-gradient(circle, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.06) 50%, rgba(194,65,12,0) 100%)',
-    iconColor: 'text-orange-500',
-  },
-  {
-    icon: LogIn,
-    label: t('nav.login'),
-    href: '/login',
-    gradient: 'radial-gradient(circle, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.06) 50%, rgba(21,128,61,0) 100%)',
-    iconColor: 'text-green-500',
-  },
-  {
-    icon: Settings,
-    label: t('nav.admin'),
-    href: '/admin',
-    gradient: 'radial-gradient(circle, rgba(239,68,68,0.15) 0%, rgba(220,38,38,0.06) 50%, rgba(185,28,28,0) 100%)',
-    iconColor: 'text-red-500',
-  },
-])
+const isAdminLoggedIn = computed(() => {
+  // 绑定路由，确保登录/跳转后菜单可及时响应
+  route.fullPath
+  return !!localStorage.getItem('admin_token')
+})
+
+const menuItems = computed(() => {
+  const items = [
+    {
+      icon: Home,
+      label: t('nav.home'),
+      href: '/',
+      gradient: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.06) 50%, rgba(29,78,216,0) 100%)',
+      iconColor: 'text-blue-500',
+    },
+  ]
+
+  if (isAdminLoggedIn.value) {
+    items.push({
+      icon: Settings,
+      label: t('nav.admin'),
+      href: '/admin',
+      gradient: 'radial-gradient(circle, rgba(239,68,68,0.15) 0%, rgba(220,38,38,0.06) 50%, rgba(185,28,28,0) 100%)',
+      iconColor: 'text-red-500',
+    })
+  } else {
+    items.push({
+      icon: UserPlus,
+      label: t('nav.register'),
+      href: '/register',
+      gradient: 'radial-gradient(circle, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.06) 50%, rgba(194,65,12,0) 100%)',
+      iconColor: 'text-orange-500',
+    })
+
+    items.push({
+      icon: LogIn,
+      label: t('nav.login'),
+      href: '/login',
+      gradient: 'radial-gradient(circle, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.06) 50%, rgba(21,128,61,0) 100%)',
+      iconColor: 'text-green-500',
+    })
+  }
+
+  return items
+})
 
 const isActive = (href: string) => {
   if (href === '/') {

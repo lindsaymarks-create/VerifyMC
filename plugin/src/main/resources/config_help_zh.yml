@@ -200,6 +200,40 @@ questionnaire:
   pass_score: 60
   # 问卷通过后是否自动批准用户
   auto_approve_on_pass: false
+  # 是否必须通过问卷后才允许提交注册
+  require_pass_before_register: false
+
+# ----------------------------------------
+# LLM 问答评分（用于 text 问题）
+# ----------------------------------------
+llm:
+  # 评分提供方。可选：deepseek / google
+  provider: deepseek
+  # OpenAI 兼容接口基础地址（程序会自动拼接 /chat/completions）
+  api_base: https://api.deepseek.com/v1
+  # API 密钥
+  api_key: ""
+  # 模型名称
+  model: deepseek-chat
+  # 请求超时时间（毫秒）
+  timeout: 10000
+  # 解析失败或网络失败时的重试次数
+  retry: 1
+  # 固定系统提示词（和题目、回答、评分规则一起拼装）
+  system_prompt: |
+    你是一个公平的 Minecraft 白名单问卷评分助手。
+    你必须严格根据题目、用户回答和评分规则进行打分。
+    返回 JSON，且仅返回 JSON。
+  # text 题默认最大分（题目未单独配置 max_score 时使用）
+  max_score: 20
+  # 评分规则文本，会拼接到用户提示词（可在 questionnaire.yml 的 text 题上用 scoring_rule 覆盖）
+  scoring_rule: |
+    主要考察：
+    1) 与题意相关性
+    2) 回答完整度与细节
+    3) 对服务器规则与社区氛围的理解
+  # 期望模型输出格式（JSON）
+  score_format: '{"score": number, "reason": string, "confidence": number}'
 
 # ----------------------------------------
 # Discord集成（OAuth2）

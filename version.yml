@@ -1,13 +1,47 @@
 release: true
-version: 1.2.7
+version: 1.2.8
 release_notes: |
-  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.7/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.8/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
 
-  # VerifyMC v1.2.7 Release Notes
+  # VerifyMC v1.2.8 Release Notes
 
-  ## 🐛 Bug Fixes
+  ## New Features
 
-  ### Questionnaire Not Displaying
-  - Fixed questionnaire form not showing on registration page even when enabled in both `config.yml` and `questionnaire.yml`
-  - Integrated `QuestionnaireForm` component into the registration flow (questionnaire first, then registration)
-  - Added missing `questionnaire` field to `ConfigResponse` type definition to align with backend API response
+  ### Multi-Step Registration with Questionnaire Enforcement (PR #18)
+  - Implemented mandatory multi-step questionnaire workflow before registration
+  - Added text question type with LLM-based essay scoring (DeepSeek / Google Gemini)
+  - Circuit breaker, retry, concurrency control and low-confidence manual review escalation
+  - Questionnaire token lifecycle management to prevent replay attacks
+  - Configurable `require_pass_before_register` and `auto_approve_on_pass`
+
+  ### Bedrock Edition Support
+  - Added Java/Bedrock dual-mode platform selector (glass-style toggle)
+  - Bedrock username normalization with configurable prefix
+  - Separate username regex validation for Bedrock players
+
+  ### Proxy API Key Authentication
+  - Unified `security.api_key` / `proxy.api_key` for proxy-to-backend endpoint auth
+  - Constant-time key comparison to prevent timing attacks
+  - Proxy plugin warns on empty API key at startup
+
+  ## Bug Fixes
+
+  ### i18n Locale Persistence Fix
+  - Fixed operator precedence bug in `i18n.ts` that caused language preference to always resolve to `zh`
+
+  ### Login Hot-Path Performance
+  - Replaced O(n) full-user scan in `onPlayerLogin` with indexed DAO lookup
+
+  ### Proxy Whitelist Response Parsing
+  - Fixed `ApiClient.java` to correctly distinguish `success` (request ok) from `found` (player exists)
+  - Backward compatible with old protocol
+
+  ### MySQL Index Detection
+  - Fixed `SHOW INDEX` detection logic that silently skipped index creation
+
+  ## Improvements
+
+  - Admin review panel now shows questionnaire score and review summary
+  - Navigation dynamically hides register entry after admin login
+  - Sensitive data (email, verification code) masked in logs
+  - Cleanup thread is now daemon and properly interruptible

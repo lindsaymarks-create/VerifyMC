@@ -43,6 +43,8 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ $t('admin.review.table.username') }}</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ $t('admin.review.table.email') }}</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ $t('admin.review.table.register_time') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ $t('admin.review.table.questionnaire_score') }}</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{{ $t('admin.review.table.questionnaire_reason') }}</th>
               <th class="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">{{ $t('admin.review.table.actions') }}</th>
             </tr>
           </thead>
@@ -63,7 +65,17 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-300">
-                  {{ formatDate(user.registerTime) }}
+                  {{ formatDate(user.regTime || user.registerTime) }}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-300">
+                  {{ user.questionnaire_score ?? '-' }}
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm text-gray-300 max-w-[360px] break-words">
+                  {{ user.questionnaire_review_summary || '-' }}
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -168,7 +180,8 @@ const rejectModal = ref({
   processing: false
 })
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString?: string | number | null) => {
+  if (!dateString) return "-"
   return new Date(dateString).toLocaleString()
 }
 

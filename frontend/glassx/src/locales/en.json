@@ -28,8 +28,7 @@
     "home": "Home",
     "register": "Register",
     "login": "Login",
-    "admin": "Admin",
-    "logout": "Logout"
+    "admin": "Admin"
   },
   "home": {
     "title": "VerifyMC Whitelist System",
@@ -106,7 +105,23 @@
     "rate_limited": "Verification code sent too frequently. Please wait {seconds} seconds before trying again",
     "success": "Registration successful! Please wait for review.",
     "failed": "Registration failed. Please try again.",
-    "usernameExists": "Username already exists"
+    "usernameExists": "Username already exists",
+    "steps": {
+      "basic": "Basic Info",
+      "questionnaire": "Questionnaire",
+      "submit": "Submit"
+    },
+    "actions": {
+      "next_questionnaire": "Next: Questionnaire"
+    },
+    "summary": {
+      "username": "Username",
+      "email": "Email",
+      "questionnaire": "Questionnaire"
+    },
+    "questionnaire": {
+      "required": "You must pass the questionnaire before registration."
+    }
   },
   "login": {
     "title": "Admin Login",
@@ -139,7 +154,9 @@
         "username": "Username",
         "email": "Email",
         "register_time": "Register Time",
-        "actions": "Actions"
+        "actions": "Actions",
+        "questionnaire_score": "Questionnaire Score",
+        "questionnaire_reason": "Questionnaire Review Reason"
       },
       "actions": {
         "approve": "Approve",
@@ -263,12 +280,6 @@
     "timeout": "Request timeout, please try again later",
     "unknown": "Unknown error, please try again later"
   },
-  "nav": {
-    "home": "Home",
-    "register": "Register",
-    "login": "Login",
-    "admin": "Admin"
-  },
   "language": {
     "switch": "Switch Language",
     "zh": "中文",
@@ -304,7 +315,10 @@
     "multiple_choice": "Multiple choice",
     "answer_all": "Please answer all questions",
     "load_error": "Failed to load questionnaire",
-    "submit_error": "Failed to submit questionnaire"
+    "submit_error": "Failed to submit questionnaire",
+    "text_placeholder": "Please enter your answer",
+    "length_hint": "Length requirement: {min}-{max} characters",
+    "unsupported_type": "Unsupported question type"
   },
   "discord": {
     "link_button": "Link Discord",
