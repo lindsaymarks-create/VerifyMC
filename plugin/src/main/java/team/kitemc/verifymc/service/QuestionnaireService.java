@@ -55,15 +55,7 @@ public class QuestionnaireService {
             plugin.getConfig().getInt("llm.input_max_length", 2000)
         );
 
-        if ("google".equals(provider)) {
-            return new GoogleScoringProvider(plugin, config);
-        }
-        if ("deepseek".equals(provider)) {
-            return new DeepSeekScoringProvider(plugin, config);
-        }
-
-        plugin.getLogger().warning("[VerifyMC] Unknown llm.provider: " + provider + ", fallback to deepseek");
-        return new DeepSeekScoringProvider(plugin, config);
+        return new OpenAICompatibleScoringProvider(plugin, config);
     }
 
     /**
