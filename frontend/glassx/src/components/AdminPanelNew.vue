@@ -29,8 +29,8 @@
                   <TableHead>{{ $t('admin.review.table.username') }}</TableHead>
                   <TableHead>{{ $t('admin.review.table.email') }}</TableHead>
                   <TableHead>{{ $t('admin.review.table.register_time') }}</TableHead>
-                  <TableHead>{{ $t('admin.review.table.questionnaire_score') }}</TableHead>
-                  <TableHead>{{ $t('admin.review.table.questionnaire_reason') }}</TableHead>
+                  <TableHead v-if="showQuestionnaireScoreColumn">{{ $t('admin.review.table.questionnaire_score') }}</TableHead>
+                  <TableHead v-if="showQuestionnaireReasonColumn">{{ $t('admin.review.table.questionnaire_reason') }}</TableHead>
                   <TableHead class="w-[150px]">{{ $t('admin.review.table.actions') }}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -39,8 +39,8 @@
                   <TableCell class="font-medium text-white">{{ user.username }}</TableCell>
                   <TableCell>{{ user.email }}</TableCell>
                   <TableCell>{{ formatDate(user.regTime || user.registerTime) }}</TableCell>
-                  <TableCell>{{ user.questionnaire_score ?? '—' }}</TableCell>
-                  <TableCell class="max-w-[360px] break-words">{{ user.questionnaire_review_summary || '—' }}</TableCell>
+                  <TableCell v-if="showQuestionnaireScoreColumn">{{ user.questionnaire_score ?? '—' }}</TableCell>
+                  <TableCell v-if="showQuestionnaireReasonColumn" class="max-w-[360px] break-words">{{ user.questionnaire_review_summary || '—' }}</TableCell>
                   <TableCell>
                     <div class="flex space-x-2">
                       <Button 
@@ -63,7 +63,7 @@
                   </TableCell>
                 </TableRow>
                 <TableRow v-if="pendingUsers.length === 0">
-                  <TableCell colspan="6" class="text-center py-8 text-white/60">
+                  <TableCell :colspan="reviewTableColspan" class="text-center py-8 text-white/60">
                     {{ $t('admin.review.no_pending') }}
                   </TableCell>
                 </TableRow>
@@ -365,6 +365,12 @@ if (!sessionService.isAuthenticated()) {
 const loading = ref(false)
 const pendingUsers = ref<any[]>([])
 const allUsers = ref<any[]>([])
+const questionnaireEnabled = ref(false)
+const questionnaireHasTextQuestions = ref(false)
+
+const showQuestionnaireScoreColumn = computed(() => questionnaireEnabled.value)
+const showQuestionnaireReasonColumn = computed(() => questionnaireEnabled.value && questionnaireHasTextQuestions.value)
+const reviewTableColspan = computed(() => 4 + (showQuestionnaireScoreColumn.value ? 1 : 0) + (showQuestionnaireReasonColumn.value ? 1 : 0))
 
 // Pagination state
 const currentPage = ref(1)
@@ -424,6 +430,18 @@ const getStatusClass = (status: string) => {
       return `${baseClasses} bg-red-500/20 text-red-300`;
     default:
       return `${baseClasses} bg-gray-500/20 text-gray-300`;
+  }
+}
+
+const loadQuestionnaireConfig = async () => {
+  try {
+    const config = await apiService.getConfig()
+    questionnaireEnabled.value = Boolean(config.questionnaire?.enabled)
+    questionnaireHasTextQuestions.value = Boolean(config.questionnaire?.has_text_questions)
+  } catch (error) {
+    console.error('Failed to load questionnaire config:', error)
+    questionnaireEnabled.value = false
+    questionnaireHasTextQuestions.value = false
   }
 }
 
@@ -823,8 +841,9 @@ watch(searchQuery, () => {
   handleSearch()
 })
 
-const onTabChange = (tab: string) => {
+const onTabChange = async (tab: string) => {
   if (tab === 'review') {
+    await loadQuestionnaireConfig()
     loadPendingUsers();
   } else if (tab === 'users') {
     // Reset pagination when switching to users tab
@@ -835,7 +854,8 @@ const onTabChange = (tab: string) => {
 
 
 
-onMounted(() => {
+onMounted(async () => {
+  await loadQuestionnaireConfig()
   loadPendingUsers()
   loadAllUsers()
 
