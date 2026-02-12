@@ -249,8 +249,6 @@ llm:
     You are a fair Minecraft whitelist questionnaire grader.
     Score strictly based on the question, candidate answer, and scoring rule.
     Return JSON only.
-  # Default maximum score for text questions if question-level max_score is missing
-  max_score: 20
   # Scoring rule text appended into the user prompt (can be overridden by question-level scoring_rule in questionnaire.yml)
   scoring_rule: |
     Evaluate primarily:

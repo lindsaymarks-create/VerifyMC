@@ -249,8 +249,6 @@ llm:
     你是一个公平的 Minecraft 白名单问卷评分助手。
     你必须严格根据题目、用户回答和评分规则进行打分。
     返回 JSON，且仅返回 JSON。
-  # text 题默认最大分（题目未单独配置 max_score 时使用）
-  max_score: 20
   # 评分规则文本，会拼接到用户提示词（可在 questionnaire.yml 的 text 题上用 scoring_rule 覆盖）
   scoring_rule: |
     主要考察：
