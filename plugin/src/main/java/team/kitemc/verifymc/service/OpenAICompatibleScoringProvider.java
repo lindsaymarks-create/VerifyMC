@@ -15,7 +15,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class OpenAICompatibleScoringProvider implements EssayScoringService {
+public class OpenAICompatibleScoringProvider implements EssayScoringService {
     protected final Plugin plugin;
     private final LlmScoringConfig config;
     private final HttpClient client;
@@ -23,7 +23,7 @@ public abstract class OpenAICompatibleScoringProvider implements EssayScoringSer
     private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
     private volatile long circuitOpenUntil = 0L;
 
-    protected OpenAICompatibleScoringProvider(Plugin plugin, LlmScoringConfig config) {
+    public OpenAICompatibleScoringProvider(Plugin plugin, LlmScoringConfig config) {
         this.plugin = plugin;
         this.config = config;
         this.client = HttpClient.newBuilder()
