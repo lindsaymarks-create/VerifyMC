@@ -1,5 +1,3 @@
-import { useI18n } from 'vue-i18n'
-
 const API_BASE = '/api'
 
 export interface ApiResponse<T = any> {
@@ -145,17 +143,26 @@ export interface ChangePasswordRequest {
 }
 
 class ApiService {
+  private readonly jsonHeaders = {
+    'Content-Type': 'application/json'
+  }
+
   private getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('admin_token')
     if (token) {
       return {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        ...this.jsonHeaders
       }
     }
-    return {
-      'Content-Type': 'application/json'
-    }
+    return this.jsonHeaders
+  }
+
+  private postJson<T>(endpoint: string, payload?: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: payload === undefined ? undefined : JSON.stringify(payload),
+    })
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -192,26 +199,17 @@ class ApiService {
 
   // 发送验证码
   async sendCode(data: SendCodeRequest): Promise<SendCodeResponse> {
-    return this.request<SendCodeResponse>('/send_code', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    return this.postJson<SendCodeResponse>('/send_code', data)
   }
 
   // 注册用户
   async register(data: RegisterRequest): Promise<RegisterResponse> {
-    return this.request<RegisterResponse>('/register', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    return this.postJson<RegisterResponse>('/register', data)
   }
 
   // 管理员登录
   async adminLogin(data: AdminLoginRequest): Promise<AdminLoginResponse> {
-    return this.request<AdminLoginResponse>('/admin-login', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    return this.postJson<AdminLoginResponse>('/admin-login', data)
   }
 
   // 获取待审核用户列表
@@ -221,49 +219,32 @@ class ApiService {
 
   // 审核用户
   async reviewUser(data: ReviewRequest): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/review', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    return this.postJson<ReviewResponse>('/review', data)
   }
 
   // 删除用户
   async deleteUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/delete-user', {
-      method: 'POST',
-      body: JSON.stringify({ uuid, language }),
-    })
+    return this.postJson<ReviewResponse>('/delete-user', { uuid, language })
   }
 
   // 封禁用户
   async banUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/ban-user', {
-      method: 'POST',
-      body: JSON.stringify({ uuid, language }),
-    })
+    return this.postJson<ReviewResponse>('/ban-user', { uuid, language })
   }
 
   // 解封用户
   async unbanUser(uuid: string, language: string = 'zh'): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/unban-user', {
-      method: 'POST',
-      body: JSON.stringify({ uuid, language }),
-    })
+    return this.postJson<ReviewResponse>('/unban-user', { uuid, language })
   }
 
   // 更新公告
   async updateAnnouncement(content: string, language: string = 'zh'): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/update-announcement', {
-      method: 'POST',
-      body: JSON.stringify({ content, language }),
-    })
+    return this.postJson<ReviewResponse>('/update-announcement', { content, language })
   }
 
   // 重载配置
   async reloadConfig(): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>('/reload-config', {
-      method: 'POST',
-    })
+    return this.postJson<{ success: boolean; message: string }>('/reload-config')
   }
 
   // 获取所有用户
@@ -314,10 +295,7 @@ class ApiService {
 
   // 修改用户密码
   async changePassword(data: ChangePasswordRequest): Promise<ReviewResponse> {
-    return this.request<ReviewResponse>('/change-password', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    return this.postJson<ReviewResponse>('/change-password', data)
   }
 
   // 检查认证状态
@@ -349,10 +327,7 @@ class ApiService {
     auth_url?: string;
     msg?: string;
   }> {
-    return this.request('/discord/auth', {
-      method: 'POST',
-      body: JSON.stringify({ username }),
-    })
+    return this.postJson('/discord/auth', { username })
   }
 
   // Discord OAuth - 检查绑定状态
