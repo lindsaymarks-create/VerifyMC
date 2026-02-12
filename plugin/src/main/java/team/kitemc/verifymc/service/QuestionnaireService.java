@@ -98,6 +98,32 @@ public class QuestionnaireService {
         return plugin.getConfig().getInt("questionnaire.pass_score", 60);
     }
 
+    public boolean hasTextQuestions() {
+        if (questionnaireConfig == null) {
+            return false;
+        }
+
+        List<?> questionsList = questionnaireConfig.getList("questions");
+        if (questionsList == null) {
+            return false;
+        }
+
+        for (Object qObj : questionsList) {
+            if (!(qObj instanceof Map)) {
+                continue;
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> questionMap = (Map<String, Object>) qObj;
+            String questionType = String.valueOf(questionMap.getOrDefault("type", "single_choice"));
+            if ("text".equalsIgnoreCase(questionType)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 
     public JSONObject getQuestionnaire(String language) {
         JSONObject result = new JSONObject();

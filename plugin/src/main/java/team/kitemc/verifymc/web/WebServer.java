@@ -499,6 +499,7 @@ public class WebServer {
             JSONObject questionnaire = new JSONObject();
             questionnaire.put("enabled", questionnaireService.isEnabled());
             questionnaire.put("pass_score", questionnaireService.getPassScore());
+            questionnaire.put("has_text_questions", questionnaireService.hasTextQuestions());
             
             // Discord configuration
             JSONObject discord = new JSONObject();
