@@ -338,6 +338,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useNotification } from '@/composables/useNotification'
 import { apiService } from '@/services/api'
+import { sessionService } from '@/services/session'
 import Tabs from './ui/Tabs.vue'
 import Table from './ui/Table.vue'
 import TableHeader from './ui/TableHeader.vue'
@@ -356,10 +357,9 @@ const { t, locale } = useI18n()
 const notification = useNotification()
 
 // 认证检查
-const token = localStorage.getItem('admin_token')
-if (!token) {
+if (!sessionService.isAuthenticated()) {
   // 如果没有token，重定向到登录页面
-  window.location.href = '/login'
+  sessionService.redirectToLogin()
 }
 
 const loading = ref(false)

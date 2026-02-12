@@ -1,4 +1,4 @@
-import { useI18n } from 'vue-i18n'
+import { sessionService } from '@/services/session'
 
 const API_BASE = '/api'
 
@@ -146,7 +146,7 @@ export interface ChangePasswordRequest {
 
 class ApiService {
   private getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem('admin_token')
+    const token = sessionService.getToken()
     if (token) {
       return {
         'Authorization': `Bearer ${token}`,
@@ -166,15 +166,13 @@ class ApiService {
     })
 
     if (response.status === 401 || response.status === 403) {
-      localStorage.removeItem('admin_token')
-      window.location.href = '/login'
+      sessionService.handleUnauthorized()
       throw new Error('Authentication required')
     }
 
     const data = await response.json()
     if (data && data.success === false && data.message && data.message.includes('Authentication required')) {
-      localStorage.removeItem('admin_token')
-      window.location.href = '/login'
+      sessionService.handleUnauthorized()
       throw new Error('Authentication required')
     }
     return data
@@ -322,13 +320,13 @@ class ApiService {
 
   // 检查认证状态
   isAuthenticated(): boolean {
-    const token = localStorage.getItem('admin_token')
+    const token = sessionService.getToken()
     return token !== null
   }
 
   // 登出
   logout(): void {
-    localStorage.removeItem('admin_token')
+    sessionService.clearToken()
   }
 
   // 版本检查
