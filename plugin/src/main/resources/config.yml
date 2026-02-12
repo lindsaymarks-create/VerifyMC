@@ -105,7 +105,6 @@ llm:
     你是一个公平的 Minecraft 白名单问卷评分助手。
     你必须严格根据题目、用户回答和评分规则进行打分。
     返回 JSON，且仅返回 JSON。
-  max_score: 20
   scoring_rule: |
     主要考察：
     1) 与题意相关性
