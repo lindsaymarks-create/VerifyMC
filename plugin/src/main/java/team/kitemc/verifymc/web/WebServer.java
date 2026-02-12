@@ -312,8 +312,19 @@ public class WebServer {
         if (username == null || username.trim().isEmpty()) {
             return false;
         }
-        String regex = plugin.getConfig().getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$");
+        String regex = getUsernameRegexForUser(username);
         return username.matches(regex);
+    }
+
+    private String getUsernameRegexForUser(String username) {
+        boolean bedrockEnabled = plugin.getConfig().getBoolean("bedrock.enabled", false);
+        String bedrockPrefix = plugin.getConfig().getString("bedrock.prefix", ".");
+
+        if (bedrockEnabled && username != null && username.startsWith(bedrockPrefix)) {
+            return plugin.getConfig().getString("bedrock.username_regex", "^\\.[a-zA-Z0-9_\\s]{3,16}$");
+        }
+
+        return plugin.getConfig().getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$");
     }
     private boolean isUsernameCaseConflict(String username) {
         return ((team.kitemc.verifymc.VerifyMC)plugin).isUsernameCaseConflict(username);
@@ -1092,7 +1103,7 @@ public class WebServer {
             if (!isValidUsername(username)) {
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
-                String usernameRegex = plugin.getConfig().getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$");
+                String usernameRegex = getUsernameRegexForUser(username);
                 resp.put("msg", getMsg("username.invalid", language).replace("{regex}", usernameRegex));
                 sendJson(exchange, resp);
                 return;
