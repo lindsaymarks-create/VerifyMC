@@ -15,10 +15,10 @@
     <footer class="app-footer">
       <!-- Gradient top border -->
       <div class="footer-gradient-line"></div>
-      
+
       <div class="footer-content">
         <div class="footer-row">
-          <span class="footer-brand">VerifyMC by KiteMC Team © 2025-{{ currentYear }}</span>
+          <span class="footer-brand">VerifyMC by KiteMC Team 2025-{{ currentYear }}</span>
           <span class="footer-divider">•</span>
           <span class="footer-love">
             <span>Made with</span>
@@ -79,10 +79,10 @@ if (typeof window !== 'undefined') {
   --glass-blur: 20px;
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  
+
   --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
   --gradient-accent: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
-  
+
   --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
@@ -94,15 +94,19 @@ if (typeof window !== 'undefined') {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
-  background: #030303;
-  transform: translateZ(0);
+  height: 100vh;
+  overflow-y: auto;
+  background: transparent;
+  position: relative;
+  z-index: 1;
 }
 
-body {
+html, body {
   background: #030303;
   margin: 0;
   padding: 0;
+  height: 100vh;
+  overflow: hidden;
 }
 
 * {
@@ -128,11 +132,11 @@ body {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(59, 130, 246, 0.3) 20%, 
-    rgba(139, 92, 246, 0.3) 50%, 
-    rgba(236, 72, 153, 0.3) 80%, 
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.3) 20%,
+    rgba(139, 92, 246, 0.3) 50%,
+    rgba(236, 72, 153, 0.3) 80%,
     transparent 100%
   );
 }
@@ -301,7 +305,7 @@ body {
   .heart-icon {
     animation: none;
   }
-  
+
   * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;

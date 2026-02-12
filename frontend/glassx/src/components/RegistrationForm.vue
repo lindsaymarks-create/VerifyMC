@@ -1,17 +1,7 @@
 <template>
-  <div class="registration-card" :class="shouldShowPassword ? 'w-full max-w-3xl' : 'w-full max-w-2xl'">
-    <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-xl opacity-60 animate-gradient-shift"></div>
-
-    <div class="relative bg-white/[0.08] backdrop-blur-2xl border border-white/[0.15] rounded-2xl p-8 shadow-2xl overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none"></div>
-      <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-
-      <div class="relative z-10 text-center mb-6">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-600/20 border border-white/10 mb-4 shadow-lg">
-          <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-          </svg>
-        </div>
+  <div class="registration-card" :class="shouldShowPassword ? 'w-full max-w-xl' : 'w-full max-w-md'">
+    <div class="relative">
+      <div class="text-center mb-8 lg:hidden">
         <h2 class="text-2xl font-bold text-white mb-2 tracking-tight">{{ $t('register.title') }}</h2>
         <p class="text-white/60 text-sm">{{ $t('register.subtitle') }}</p>
       </div>
@@ -429,30 +419,27 @@ function generateUUID() {
 </script>
 
 <style scoped>
-.registration-card { position: relative; padding: 2px; }
-@keyframes gradient-shift { 0%,100% { opacity: .4; transform: scale(1);} 50% { opacity:.6; transform: scale(1.02);} }
-.animate-gradient-shift { animation: gradient-shift 4s ease-in-out infinite; }
-.glass-input { width: 100%; padding: .75rem 1rem; background: rgba(255,255,255,.08); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; color: #fff; font-size: .95rem; transition: all .3s cubic-bezier(.4,0,.2,1); outline: none; }
-.glass-input::placeholder { color: rgba(255,255,255,.4); }
-.glass-input:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); }
-.glass-input:focus { background: rgba(255,255,255,.12); border-color: rgba(59,130,246,.5); box-shadow: 0 0 0 3px rgba(59,130,246,.15), 0 0 20px rgba(59,130,246,.2); }
+.registration-card { position: relative; }
+.glass-input { width: 100%; padding: .625rem .875rem; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #fff; font-size: .875rem; transition: all .2s ease; outline: none; }
+.glass-input::placeholder { color: rgba(255,255,255,.3); }
+.glass-input:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); }
+.glass-input:focus { background: rgba(255,255,255,.1); border-color: rgba(99,102,241,.4); box-shadow: 0 0 0 2px rgba(99,102,241,.1); }
 .glass-input-error { border-color: rgba(239,68,68,.5)!important; }
-.glass-input-error:focus { border-color: rgba(239,68,68,.6)!important; box-shadow: 0 0 0 3px rgba(239,68,68,.15), 0 0 20px rgba(239,68,68,.2)!important; }
-.glass-button-secondary { padding: .75rem 1.25rem; background: rgba(255,255,255,.1); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.2); border-radius: 12px; color: #fff; font-weight: 500; white-space: nowrap; cursor: pointer; transition: all .3s cubic-bezier(.4,0,.2,1); }
-.glass-button-secondary:hover:not(:disabled) { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.3); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.glass-input-error:focus { border-color: rgba(239,68,68,.6)!important; box-shadow: 0 0 0 2px rgba(239,68,68,.08)!important; }
+.glass-button-secondary { padding: .625rem 1.125rem; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); border-radius: 8px; color: #fff; font-weight: 500; font-size: .875rem; white-space: nowrap; cursor: pointer; transition: all .2s ease; }
+.glass-button-secondary:hover:not(:disabled) { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.25); }
 .glass-button-secondary:disabled { opacity: .5; cursor: not-allowed; }
-.submit-button { position: relative; width: 100%; padding: .875rem 1.5rem; background: linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%); border: none; border-radius: 12px; color: #fff; font-weight: 600; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: .5rem; overflow: hidden; transition: all .3s cubic-bezier(.4,0,.2,1); box-shadow: 0 4px 15px rgba(59,130,246,.3), inset 0 1px 0 rgba(255,255,255,.2); }
-.submit-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59,130,246,.4), inset 0 1px 0 rgba(255,255,255,.2); }
-.submit-button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
-.button-shine { position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent); transition: left .6s ease; }
-.submit-button:hover:not(:disabled) .button-shine { left: 100%; }
-.spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+.submit-button { position: relative; width: 100%; padding: .75rem 1.5rem; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border: none; border-radius: 8px; color: #fff; font-weight: 600; font-size: .875rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: .5rem; overflow: hidden; transition: all .2s ease; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.submit-button:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(79,70,229,.3); }
+.submit-button:disabled { opacity: .4; cursor: not-allowed; filter: none; }
+.button-shine { display: none; }
+.spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg);} }
-.step-chip { color: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); border-radius: 9999px; padding: .25rem .65rem; }
-.step-chip-active { color: #fff; border-color: rgba(59,130,246,.8); background: rgba(59,130,246,.2); }
-.step-separator { width: 16px; height: 1px; background: rgba(255,255,255,.3); }
-.platform-toggle { display: inline-flex; width: 100%; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); padding: 4px; gap: 4px; }
-.platform-option { flex: 1; border: none; background: transparent; color: rgba(255,255,255,.75); border-radius: 10px; padding: .55rem .75rem; cursor: pointer; transition: all .2s ease; font-weight: 600; }
-.platform-option:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.95); }
-.platform-option-active { background: rgba(59,130,246,.35); color: #fff; box-shadow: 0 0 0 1px rgba(59,130,246,.5) inset; }
+.step-chip { color: rgba(255,255,255,.35); font-size: .75rem; letter-spacing: .02em; }
+.step-chip-active { color: rgba(165,148,249,.9); }
+.step-separator { width: 20px; height: 1px; background: rgba(255,255,255,.12); }
+.platform-toggle { display: inline-flex; width: 100%; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); padding: 3px; gap: 2px; }
+.platform-option { flex: 1; border: none; background: transparent; color: rgba(255,255,255,.5); border-radius: 6px; padding: .5rem .75rem; cursor: pointer; transition: all .2s ease; font-weight: 500; font-size: .875rem; }
+.platform-option:hover { color: rgba(255,255,255,.8); }
+.platform-option-active { background: rgba(255,255,255,.1); color: #fff; }
 </style>

@@ -1,18 +1,5 @@
 <template>
-  <div class="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#030303]">
-    <!-- Enhanced background gradient -->
-    <div class="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black opacity-50" />
-    
-    <!-- Floating orbs for visual depth -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div class="floating-orb orb-1"></div>
-      <div class="floating-orb orb-2"></div>
-      <div class="floating-orb orb-3"></div>
-    </div>
-    
-    <!-- Subtle grid pattern -->
-    <div class="absolute inset-0 opacity-[0.02]" style="background-image: linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px); background-size: 50px 50px;"></div>
-
+  <div class="relative min-h-screen w-full flex items-center justify-center overflow-hidden">
     <!-- Main content -->
     <div class="relative z-10 container mx-auto px-4 md:px-6">
       <div class="max-w-3xl mx-auto text-center">
@@ -86,8 +73,8 @@
       </div>
     </div>
 
-    <!-- 底部渐变遮罩 -->
-    <div class="absolute inset-0 bg-gradient-to-t from-[#030303] via-transparent to-[#030303]/80 pointer-events-none" />
+    <!-- 底部渐变遮罩 (softened to let fixed background show) -->
+    <div class="absolute inset-0 bg-gradient-to-t from-[#030303]/60 via-transparent to-transparent pointer-events-none" />
   </div>
 </template>
 
@@ -253,7 +240,7 @@ watch(() => config.value?.frontend?.web_server_prefix, (newPrefix) => {
   text-decoration: none;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 
+  box-shadow:
     0 4px 15px rgba(59, 130, 246, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
@@ -318,7 +305,7 @@ watch(() => config.value?.frontend?.web_server_prefix, (newPrefix) => {
 
 .register-button:hover {
   transform: translateY(-3px);
-  box-shadow: 
+  box-shadow:
     0 8px 30px rgba(59, 130, 246, 0.5),
     0 0 40px rgba(139, 92, 246, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -357,11 +344,11 @@ watch(() => config.value?.frontend?.web_server_prefix, (newPrefix) => {
   .fade-up-item p {
     font-size: 1rem;
   }
-  
+
   .floating-orb {
     display: none;
   }
-  
+
   .register-button,
   .glass-button {
     width: 100%;
@@ -376,15 +363,15 @@ watch(() => config.value?.frontend?.web_server_prefix, (newPrefix) => {
     opacity: 1;
     transform: translateY(0);
   }
-  
+
   .floating-orb {
     animation: none;
   }
-  
+
   .register-button .button-shine {
     display: none;
   }
-  
+
   .register-button .button-glow {
     animation: none;
   }

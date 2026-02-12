@@ -1,21 +1,15 @@
 <template>
   <div class="min-h-screen p-6 relative overflow-hidden">
-    <!-- Background Elements -->
-    <div class="absolute inset-0 overflow-hidden">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-    </div>
-
     <!-- Navigation -->
     <nav class="relative z-10 mb-8">
       <div class="max-w-4xl mx-auto flex justify-between items-center">
         <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+          <div class="w-10 h-10 bg-white/[0.08] border border-white/10 rounded-xl flex items-center justify-center">
             <Server class="w-6 h-6 text-white" />
           </div>
           <h1 class="text-2xl font-bold gradient-text" v-if="config.value?.frontend?.web_server_prefix !== undefined">{{ config.value.frontend.web_server_prefix }}</h1>
         </div>
-        
+
         <div class="flex items-center space-x-4">
           <button
             @click="logout"
@@ -34,7 +28,7 @@
       <div class="glass-card p-8 animate-scale-in">
         <!-- Header -->
         <div class="text-center mb-8">
-          <div class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div class="w-16 h-16 bg-white/[0.06] border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <User class="w-8 h-8 text-white" />
           </div>
           <h1 class="text-3xl font-bold gradient-text mb-2">
@@ -164,16 +158,16 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { 
-  Server, 
-  LogOut, 
-  User, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  RefreshCw, 
-  Home, 
-  AlertCircle 
+import {
+  Server,
+  LogOut,
+  User,
+  Clock,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Home,
+  AlertCircle
 } from 'lucide-vue-next'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import Toast from '@/components/Toast.vue'
@@ -206,7 +200,7 @@ const removeToast = (id: number) => {
 
 const statusCardClass = computed(() => {
   if (!status.value) return ''
-  
+
   switch (status.value.status) {
     case 'pending':
       return 'border-yellow-400 bg-yellow-900/20'
@@ -221,7 +215,7 @@ const statusCardClass = computed(() => {
 
 const statusIconBg = computed(() => {
   if (!status.value) return 'bg-gray-500'
-  
+
   switch (status.value.status) {
     case 'pending':
       return 'bg-yellow-500'
@@ -272,7 +266,7 @@ onMounted(() => {
       console.error('Failed to parse user data:', error)
     }
   }
-  
+
   loadStatus()
 })
 </script>

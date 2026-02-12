@@ -32,6 +32,7 @@
 18. 🔐 **AuthMe Integration**: Seamless integration with AuthMe plugin for password management and auto-registration.
 19. 🎮 **Bedrock Support**: Geyser/Floodgate player prefix support for cross-platform servers.
 20. 🔗 **Proxy Support**: BungeeCord/Velocity proxy plugin for network-level whitelist enforcement.
+21. 🤖 **LLM Essay Scoring**: AI-powered auto-scoring for text questionnaire answers via DeepSeek/Google, with circuit breaker and concurrency control.
 
 ---
 
@@ -112,7 +113,7 @@ web_server_prefix: '[ Name ]'
 # ----------------------------------------
 # Supported authentication methods. Options: 'email' (email verification), 'captcha' (graphical captcha).
 # You can use multiple methods, e.g.: [email, captcha]
-# 
+#
 # [IMPORTANT] Configuring the captcha: section below does NOT enable captcha!
 # To enable captcha, you MUST add 'captcha' to this list:
 #   Captcha only: auth_methods: [captcha]
@@ -205,7 +206,7 @@ auto_update_email: true
 # If true, automatically updates theme files.
 auto_update_static: true
 # If true, creates a full backup of the plugin data folder before any auto-updates.
-backup_on_update: true 
+backup_on_update: true
 
 # ----------------------------------------
 # Email Registration Restrictions
@@ -224,7 +225,7 @@ email_domain_whitelist:
   - hotmail.com
   - icloud.com
   - yahoo.com
-  - foxmail.com 
+  - foxmail.com
 
 # ----------------------------------------
 # Storage & Data Migration
@@ -239,7 +240,7 @@ storage:
     port: 3306
     database: verifymc
     user: root
-    password: yourpassword 
+    password: yourpassword
 
 # ----------------------------------------
 # Authme Integration Configuration
@@ -292,6 +293,65 @@ questionnaire:
   # Minimum score to pass
   pass_score: 60
   # When questionnaire is enabled, users must pass it before registration
+  rate_limit:
+    # Time window for rate limiting in milliseconds
+    window_ms: 300000
+    ip:
+      # Maximum submissions allowed per IP within the time window
+      max: 20
+    uuid:
+      # Maximum submissions allowed per Minecraft UUID within the time window
+      max: 8
+    email:
+      # Maximum submissions allowed per email within the time window
+      max: 6
+
+# ----------------------------------------
+# LLM Essay Scoring (for text questions)
+# ----------------------------------------
+llm:
+  # Enable LLM auto scoring. When disabled, all text questions require manual review
+  enabled: true
+  # Scoring provider. Options: deepseek / google
+  provider: deepseek
+  # OpenAI-compatible API base URL, must use https
+  api_base: https://api.deepseek.com/v1
+  # API key
+  api_key: ""
+  # Model name
+  model: deepseek-chat
+  # Request timeout in milliseconds
+  timeout: 10000
+  # Retry count when parsing/network call fails
+  retry: 1
+  # Maximum concurrent LLM requests (protects API and server load)
+  max_concurrency: 4
+  # Max wait time to acquire a concurrency slot in milliseconds
+  acquire_timeout: 1500
+  # Base backoff delay for retries in milliseconds
+  retry_backoff_base: 300
+  # Maximum backoff delay for retries in milliseconds
+  retry_backoff_max: 5000
+  # Maximum input length sent to the model in characters
+  input_max_length: 2000
+  circuit_breaker:
+    # Threshold to open circuit breaker (consecutive failures)
+    failure_threshold: 5
+    # How long the circuit remains open in milliseconds
+    open_ms: 30000
+  # Fixed system prompt (combined with question, answer and scoring rule)
+  system_prompt: |
+    You are a fair Minecraft whitelist questionnaire grader.
+    Score strictly based on the question, candidate answer, and scoring rule.
+    Return JSON only.
+  # Scoring rule text appended into the user prompt
+  scoring_rule: |
+    Evaluate primarily:
+    1) Relevance to the question
+    2) Completeness and level of detail
+    3) Understanding of server rules and community norms
+  # Expected model output schema (JSON)
+  score_format: '{"score": number, "reason": string, "confidence": number}'
 
 # ----------------------------------------
 # Discord Integration (OAuth2)

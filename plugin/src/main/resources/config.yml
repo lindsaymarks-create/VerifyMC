@@ -1,4 +1,4 @@
-language: zh
+language: en
 debug: false
 web_port: 8080
 web_server_prefix: '[ Name ]'
@@ -38,7 +38,7 @@ auto_update_config: true
 auto_update_i18n: true
 auto_update_email: true
 auto_update_static: true
-backup_on_update: true 
+backup_on_update: true
 enable_email_domain_whitelist: true
 enable_email_alias_limit: false
 email_domain_whitelist:
@@ -50,7 +50,7 @@ email_domain_whitelist:
   - hotmail.com
   - icloud.com
   - yahoo.com
-  - foxmail.com 
+  - foxmail.com
 storage:
   type: data
   auto_migrate_on_switch: false
@@ -59,7 +59,7 @@ storage:
     port: 3306
     database: verifymc
     user: root
-    password: yourpassword 
+    password: yourpassword
 authme:
   enabled: true
   require_password: true
@@ -102,14 +102,14 @@ llm:
     failure_threshold: 5
     open_ms: 30000
   system_prompt: |
-    你是一个公平的 Minecraft 白名单问卷评分助手。
-    你必须严格根据题目、用户回答和评分规则进行打分。
-    返回 JSON，且仅返回 JSON。
+    You are a fair Minecraft whitelist questionnaire grader.
+    Score strictly based on the question, candidate answer, and scoring rule.
+    Return JSON only.
   scoring_rule: |
-    主要考察：
-    1) 与题意相关性
-    2) 回答完整度与细节
-    3) 对服务器规则与社区氛围的理解
+    Evaluate primarily:
+    1) Relevance to the question
+    2) Completeness and level of detail
+    3) Understanding of server rules and community norms
   score_format: '{"score": number, "reason": string, "confidence": number}'
 discord:
   enabled: false

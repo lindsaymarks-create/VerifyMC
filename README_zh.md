@@ -32,6 +32,7 @@
 18. 🔐 **AuthMe 集成**：与 AuthMe 插件无缝集成，支持密码管理和自动注册。
 19. 🎮 **基岩版支持**：支持 Geyser/Floodgate 玩家前缀，实现跨平台服务器兼容。
 20. 🔗 **代理支持**：BungeeCord/Velocity 代理插件，实现群组级白名单管控。
+21. 🤖 **LLM 问答评分**：AI 驱动的文本问答自动评分，支持 DeepSeek/Google，内置熔断器与并发控制。
 
 ---
 
@@ -118,7 +119,7 @@ web_server_prefix: '[ Name ]'
 # ----------------------------------------
 # 支持的验证方式。可选: 'email'（邮箱验证码）, 'captcha'（图形验证码）。
 # 可以同时使用多种方式，例如: [email, captcha]
-# 
+#
 # 【重要】仅配置下方的 captcha: 部分不会启用图形验证码！
 # 要启用图形验证码，必须在此列表中添加 'captcha'：
 #   仅使用图形验证码: auth_methods: [captcha]
@@ -211,7 +212,7 @@ auto_update_email: true
 # 如果为 true，将自动更新主题文件。
 auto_update_static: true
 # 如果为 true，将在自动更新前完整备份插件数据文件夹。
-backup_on_update: true 
+backup_on_update: true
 
 # ----------------------------------------
 # 邮箱注册限制
@@ -230,7 +231,7 @@ email_domain_whitelist:
   - hotmail.com
   - icloud.com
   - yahoo.com
-  - foxmail.com 
+  - foxmail.com
 
 # ----------------------------------------
 # 存储与数据迁移
@@ -245,7 +246,7 @@ storage:
     port: 3306
     database: verifymc
     user: root
-    password: yourpassword 
+    password: yourpassword
 
 # ----------------------------------------
 # Authme集成配置
@@ -298,6 +299,65 @@ questionnaire:
   # 通过所需的最低分数
   pass_score: 60
   # 开启问卷后，用户必须先通过问卷才可注册
+  rate_limit:
+    # 限流时间窗口（毫秒）
+    window_ms: 300000
+    ip:
+      # 每个 IP 在时间窗口内允许的最大提交次数
+      max: 20
+    uuid:
+      # 每个 Minecraft UUID 在时间窗口内允许的最大提交次数
+      max: 8
+    email:
+      # 每个邮箱在时间窗口内允许的最大提交次数
+      max: 6
+
+# ----------------------------------------
+# LLM 问答评分（用于 text 问题）
+# ----------------------------------------
+llm:
+  # 是否启用 LLM 自动评分。关闭后 text 题将全部转人工审核
+  enabled: true
+  # 评分提供方。可选：deepseek / google
+  provider: deepseek
+  # OpenAI 兼容接口基础地址，必须使用 https
+  api_base: https://api.deepseek.com/v1
+  # API 密钥
+  api_key: ""
+  # 模型名称
+  model: deepseek-chat
+  # 请求超时时间（毫秒）
+  timeout: 10000
+  # 解析失败或网络失败时的重试次数
+  retry: 1
+  # LLM 并发请求上限（用于保护接口和服务器负载）
+  max_concurrency: 4
+  # 获取并发配额的最长等待时间（毫秒）
+  acquire_timeout: 1500
+  # 重试退避基础时长（毫秒）
+  retry_backoff_base: 300
+  # 重试退避最大时长（毫秒）
+  retry_backoff_max: 5000
+  # 发送给模型的输入最大长度（字符）
+  input_max_length: 2000
+  circuit_breaker:
+    # 熔断触发阈值（连续失败次数）
+    failure_threshold: 5
+    # 熔断开启时长（毫秒）
+    open_ms: 30000
+  # 固定系统提示词（和题目、回答、评分规则一起拼装）
+  system_prompt: |
+    你是一个公平的 Minecraft 白名单问卷评分助手。
+    你必须严格根据题目、用户回答和评分规则进行打分。
+    返回 JSON，且仅返回 JSON。
+  # 评分规则文本，会拼接到用户提示词
+  scoring_rule: |
+    主要考察：
+    1) 与题意相关性
+    2) 回答完整度与细节
+    3) 对服务器规则与社区氛围的理解
+  # 期望模型输出格式（JSON）
+  score_format: '{"score": number, "reason": string, "confidence": number}'
 
 # ----------------------------------------
 # Discord集成（OAuth2）

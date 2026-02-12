@@ -28,7 +28,8 @@
     "home": "Home",
     "register": "Register",
     "login": "Login",
-    "admin": "Admin"
+    "admin": "Admin",
+    "logout": "Logout"
   },
   "home": {
     "title": "VerifyMC Whitelist System",
@@ -62,6 +63,11 @@
   "register": {
     "title": "Whitelist Registration",
     "subtitle": "Apply to join our Minecraft server whitelist",
+    "features": {
+      "secure": "Secure registration process",
+      "fast": "Fast approval turnaround",
+      "privacy": "Your privacy is protected"
+    },
     "form": {
       "username": "Username",
       "username_placeholder": "Enter your game username",

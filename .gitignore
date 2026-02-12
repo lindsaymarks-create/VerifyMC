@@ -1,7 +1,10 @@
 node_modules/
 dist/
 wiki/
+test/
+target/
+static/
 .env*
 .DS_Store
 .idea/
-.vscode/ 
+.vscode/

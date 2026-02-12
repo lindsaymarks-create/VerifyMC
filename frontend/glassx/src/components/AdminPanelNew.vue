@@ -2,6 +2,15 @@
   <div class="space-y-6 w-full overflow-hidden">
     <div class="flex justify-between items-center">
       <h1 class="text-3xl font-bold text-white">{{ $t('admin.title') }}</h1>
+      <button
+        @click="handleLogout"
+        class="glass-button text-white hover:text-red-300 transition-colors duration-300 flex items-center space-x-2 px-4 py-2"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+        </svg>
+        <span>{{ $t('nav.logout') }}</span>
+      </button>
     </div>
 
     <Tabs :tabs="tabs" default-tab="review" @tab-change="onTabChange">
@@ -43,16 +52,16 @@
                   <TableCell v-if="showQuestionnaireReasonColumn" class="max-w-[360px] break-words">{{ user.questionnaire_review_summary || '—' }}</TableCell>
                   <TableCell>
                     <div class="flex space-x-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         @click="approveUser(user)"
                         :disabled="loading || processingUsers.has(user.uuid)"
                       >
                         {{ $t('admin.review.actions.approve') }}
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         @click="openRejectDialog(user)"
                         :disabled="loading || processingUsers.has(user.uuid)"
@@ -174,7 +183,7 @@
               </TableBody>
             </Table>
           </div>
-          
+
           <!-- Pagination component for user management -->
           <Pagination
             :current-page="currentPage"
@@ -189,7 +198,7 @@
         </div>
       </template>
     </Tabs>
-    
+
     <!-- 确认对话框 -->
     <ConfirmDialog
       :show="showDeleteDialog"
@@ -201,7 +210,7 @@
       @confirm="confirmDelete"
       @cancel="showDeleteDialog = false"
     />
-    
+
     <ConfirmDialog
       :show="showBanDialog"
       :title="$t('admin.users.ban_modal.title')"
@@ -212,7 +221,7 @@
       @confirm="confirmBan"
       @cancel="showBanDialog = false"
     />
-    
+
     <ConfirmDialog
       :show="showUnbanDialog"
       :title="$t('admin.users.unban_modal.title')"
@@ -277,7 +286,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Version update notification -->
     <VersionUpdateNotification />
   </div>
@@ -336,6 +345,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import { apiService } from '@/services/api'
 import { sessionService } from '@/services/session'
@@ -354,7 +364,13 @@ import Pagination from './ui/Pagination.vue'
 import VersionUpdateNotification from './ui/VersionUpdateNotification.vue'
 
 const { t, locale } = useI18n()
+const router = useRouter()
 const notification = useNotification()
+
+const handleLogout = () => {
+  sessionService.clearToken()
+  router.push('/')
+}
 
 // 认证检查
 if (!sessionService.isAuthenticated()) {
@@ -450,7 +466,7 @@ const loadPendingUsers = async () => {
     console.log('Loading pending users...')
     const response = await apiService.getPendingList(locale.value)
     console.log('Pending users response:', response)
-    
+
     if (response.success) {
       pendingUsers.value = response.users || []
       console.log('Loaded pending users:', pendingUsers.value)
@@ -479,44 +495,44 @@ const loadAllUsers = async () => {
       pageSize: pageSize.value,
       search: searchQuery.value
     })
-    
+
     // Try paginated endpoint first
     let response = await apiService.getUsersPaginated(
-      currentPage.value, 
-      pageSize.value, 
+      currentPage.value,
+      pageSize.value,
       searchQuery.value
     )
-    
+
     console.log('Paginated API Response:', response)
-    
+
     // If paginated endpoint returns empty users, try to get pending users and combine
     if (response.success && (!response.users || response.users.length === 0)) {
       console.log('No approved/rejected users found, trying to get pending users...')
-      
+
       try {
         const pendingResponse = await apiService.getPendingList(locale.value)
         console.log('Pending users response:', pendingResponse)
-        
+
         if (pendingResponse.success && pendingResponse.users && pendingResponse.users.length > 0) {
           // Use pending users as the data source
           const pendingUsers = pendingResponse.users
-          const filteredData = searchQuery.value 
-            ? pendingUsers.filter(user => 
+          const filteredData = searchQuery.value
+            ? pendingUsers.filter(user =>
                 user.username?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
                 user.email?.toLowerCase().includes(searchQuery.value.toLowerCase())
               )
             : pendingUsers
-          
+
           const startIndex = (currentPage.value - 1) * pageSize.value
           const endIndex = startIndex + pageSize.value
           const paginatedData = filteredData.slice(startIndex, endIndex)
-          
+
           allUsers.value = paginatedData
           totalCount.value = filteredData.length
           totalPages.value = Math.ceil(filteredData.length / pageSize.value)
           hasNext.value = currentPage.value < totalPages.value
           hasPrev.value = currentPage.value > 1
-          
+
           console.log('Pending users loaded as fallback:', {
             total: filteredData.length,
             currentPage: paginatedData,
@@ -532,33 +548,33 @@ const loadAllUsers = async () => {
       } catch (error) {
         console.error('Error loading pending users:', error)
       }
-      
+
       // If still no data, try all-users endpoint
       console.log('Trying fallback all-users endpoint...')
       try {
         const fallbackResponse = await apiService.getAllUsers()
         console.log('All-users API Response:', fallbackResponse)
-        
+
         if (fallbackResponse.success && fallbackResponse.users) {
           // Manually implement pagination for fallback data
           const allUsersData = fallbackResponse.users
-          const filteredData = searchQuery.value 
-            ? allUsersData.filter(user => 
+          const filteredData = searchQuery.value
+            ? allUsersData.filter(user =>
                 user.username?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
                 user.email?.toLowerCase().includes(searchQuery.value.toLowerCase())
               )
             : allUsersData
-          
+
           const startIndex = (currentPage.value - 1) * pageSize.value
           const endIndex = startIndex + pageSize.value
           const paginatedData = filteredData.slice(startIndex, endIndex)
-          
+
           allUsers.value = paginatedData
           totalCount.value = filteredData.length
           totalPages.value = Math.ceil(filteredData.length / pageSize.value)
           hasNext.value = currentPage.value < totalPages.value
           hasPrev.value = currentPage.value > 1
-          
+
           console.log('All-users fallback data loaded:', {
             total: filteredData.length,
             currentPage: paginatedData,
@@ -575,11 +591,11 @@ const loadAllUsers = async () => {
         console.error('Error loading all users:', error)
       }
     }
-    
+
     if (response.success) {
       allUsers.value = response.users || []
       console.log('Loaded users:', allUsers.value)
-      
+
       // Update pagination info
       if (response.pagination) {
         currentPage.value = response.pagination.currentPage
@@ -709,13 +725,13 @@ const showUnbanConfirm = (user: any) => {
 
 const confirmDelete = async () => {
   if (!selectedUser.value) return
-  
+
   loading.value = true
   showDeleteDialog.value = false
-  
+
   try {
     const response = await apiService.deleteUser(selectedUser.value.uuid, locale.value)
-    
+
     if (response.success) {
       notifyResult(true, 'admin.users.messages.delete_success', response.msg)
       await loadAllUsers()
@@ -732,13 +748,13 @@ const confirmDelete = async () => {
 
 const confirmBan = async () => {
   if (!selectedUser.value) return
-  
+
   loading.value = true
   showBanDialog.value = false
-  
+
   try {
     const response = await apiService.banUser(selectedUser.value.uuid, locale.value)
-    
+
     if (response.success) {
       notifyResult(true, 'admin.users.messages.ban_success', response.msg)
       await loadAllUsers()
@@ -755,13 +771,13 @@ const confirmBan = async () => {
 
 const confirmUnban = async () => {
   if (!selectedUser.value) return
-  
+
   loading.value = true
   showUnbanDialog.value = false
-  
+
   try {
     const response = await apiService.unbanUser(selectedUser.value.uuid, locale.value)
-    
+
     if (response.success) {
       notifyResult(true, 'admin.users.messages.unban_success', response.msg)
       await loadAllUsers()
@@ -778,16 +794,16 @@ const confirmUnban = async () => {
 
 const confirmChangePassword = async () => {
   if (!selectedUser.value || !newPassword.value) return
-  
+
   loading.value = true
-  
+
   try {
     const response = await apiService.changePassword({
       uuid: selectedUser.value.uuid,
       newPassword: newPassword.value,
       language: locale.value
     })
-    
+
     if (response.success) {
       notifyResult(true, 'admin.users.messages.password_change_success', response.msg)
       showPasswordDialog.value = false
@@ -829,7 +845,7 @@ const handleSearch = () => {
   if (searchDebounceTimer.value) {
     clearTimeout(searchDebounceTimer.value)
   }
-  
+
   searchDebounceTimer.value = setTimeout(() => {
     currentPage.value = 1 // Reset to first page when searching
     loadAllUsers()
@@ -880,4 +896,4 @@ onMounted(async () => {
     } catch {}
   }
 })
-</script> 
+</script>

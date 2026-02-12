@@ -1,37 +1,15 @@
 release: true
-version: 1.2.9
+version: 1.2.10
 release_notes: |
-  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.9/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
+  [简体中文](https://github.com/KiteMC/VerifyMC/blob/v1.2.10/release_notes_zh.md) | English | [Official Documentation](https://kitemc.com/docs/verifymc/)
 
-  # VerifyMC v1.2.9 Release Notes
+  # VerifyMC v1.2.10 Release Notes
 
-  ## Registration & Questionnaire Flow Stabilization
+  ## 🎨 Frontend Redesign & Improvements
 
-  - Restored Bedrock/Java selector visibility and fixed platform selector display issues
-  - Fixed Bedrock username regex handling
-  - Resolved registration next-step freeze
-  - Restored integrated questionnaire step flow
-  - Ensured whitelist confirmation is shown when auto-approved
-  - Questionnaire is now mandatory when enabled (removed `auto_approve_on_pass` and `require_pass_before_register`, unified under `register.auto_approve`)
+  - Global fixed background: floating orb effects stay in place during scrolling across all pages
+  - Register page redesigned as two-column split layout: branding on the left, form on the right
+  - Softened glassmorphism effect on register page, removed hard border in favor of gradient transition
+  - Added logout button to the admin panel
+  - Unified background across all pages by removing per-page backgrounds
 
-  ## LLM & Scoring Improvements
-
-  - Made `OpenAICompatibleScoringProvider` concrete; removed empty `DeepSeekScoringProvider` and `GoogleScoringProvider` subclasses
-  - Added `llm.enabled` switch to force manual-review flow when LLM scoring is disabled
-  - Enforced HTTPS for `llm.api_base` to prevent API key leakage
-  - Removed global `llm.max_score`; text questions should define per-question `max_score`
-  - Synced configuration help documentation with LLM config defaults
-
-  ## Admin Panel Refactor
-
-  - Consolidated admin review and user management into `AdminPanelNew`
-  - Centralized admin session management via `sessionService` with auth redirects
-  - Added reject reason dialog for review actions
-  - Questionnaire score and review summary columns are now conditionally displayed
-  - Reject action now removes user from whitelist and unregisters from Authme
-
-  ## Cleanup
-
-  - Removed unused legacy components: `AdminReviewPanel`, `AllUsersPanel`, `NotificationBar`, `NotificationContainer`, `NotificationDemo`
-  - Removed `ResourceUpdater` initialization from plugin startup
-  - Consolidated JSON POST request logic and notification helper (`notifyResult`)

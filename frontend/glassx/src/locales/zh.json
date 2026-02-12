@@ -28,7 +28,8 @@
     "home": "首页",
     "register": "注册",
     "login": "登录",
-    "admin": "管理"
+    "admin": "管理",
+    "logout": "退出登录"
   },
   "home": {
     "title": "VerifyMC 白名单系统",
@@ -62,6 +63,11 @@
   "register": {
     "title": "白名单注册",
     "subtitle": "申请加入我们的 Minecraft 服务器白名单",
+    "features": {
+      "secure": "安全的注册流程",
+      "fast": "快速审核通过",
+      "privacy": "隐私信息受保护"
+    },
     "form": {
       "username": "用户名",
       "username_placeholder": "请输入您的游戏用户名",
