@@ -21,7 +21,6 @@ public class QuestionnaireService {
     private final boolean debug;
     private FileConfiguration questionnaireConfig;
     private final EssayScoringService essayScoringService;
-    private final int llmDefaultMaxScore;
     private final String llmScoringRule;
     private final boolean llmScoringEnabled;
 
@@ -29,7 +28,6 @@ public class QuestionnaireService {
         this.plugin = plugin;
         this.debug = plugin.getConfig().getBoolean("debug", false);
         this.essayScoringService = buildScoringService();
-        this.llmDefaultMaxScore = Math.max(1, plugin.getConfig().getInt("llm.max_score", 20));
         this.llmScoringRule = plugin.getConfig().getString("llm.scoring_rule", "Evaluate relevance, detail and rule-awareness.");
         this.llmScoringEnabled = plugin.getConfig().getBoolean("llm.enabled", true);
         loadQuestionnaireConfig();
@@ -329,7 +327,11 @@ public class QuestionnaireService {
             return Math.max(1, total);
         }
 
-        return llmDefaultMaxScore;
+        String type = String.valueOf(questionMap.getOrDefault("type", "single_choice"));
+        if ("text".equalsIgnoreCase(type)) {
+            debugLog("Text question missing max_score; fallback to 1 point. Please set question.max_score in questionnaire.yml");
+        }
+        return 1;
     }
 
     public void reload() {
