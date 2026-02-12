@@ -198,6 +198,18 @@ questionnaire:
   enabled: false
   # Minimum score to pass
   pass_score: 60
+  rate_limit:
+    # Time window for rate limiting in milliseconds
+    window_ms: 300000
+    ip:
+      # Maximum submissions allowed per IP within the time window
+      max: 20
+    uuid:
+      # Maximum submissions allowed per Minecraft UUID within the time window
+      max: 8
+    email:
+      # Maximum submissions allowed per email within the time window
+      max: 6
 
 # ----------------------------------------
 # LLM Essay Scoring (for text questions)

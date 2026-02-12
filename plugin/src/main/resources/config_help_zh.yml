@@ -198,6 +198,18 @@ questionnaire:
   enabled: false
   # 通过所需的最低分数
   pass_score: 60
+  rate_limit:
+    # 限流时间窗口（毫秒）
+    window_ms: 300000
+    ip:
+      # 每个 IP 在时间窗口内允许的最大提交次数
+      max: 20
+    uuid:
+      # 每个 Minecraft UUID 在时间窗口内允许的最大提交次数
+      max: 8
+    email:
+      # 每个邮箱在时间窗口内允许的最大提交次数
+      max: 6
 
 # ----------------------------------------
 # LLM 问答评分（用于 text 问题）
