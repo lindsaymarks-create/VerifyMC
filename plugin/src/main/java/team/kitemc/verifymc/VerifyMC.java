@@ -60,6 +60,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
     private boolean whitelistJsonSync;
     private String webRegisterUrl;
     private String webServerPrefix;
+    private boolean forceAllowApproved;
     private Path whitelistJsonPath;
     private long lastWhitelistJsonModified = 0;
     public boolean debug = false;
@@ -108,6 +109,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
         whitelistJsonSync = config.getBoolean("whitelist_json_sync", true);
         webRegisterUrl = config.getString("web_register_url", "https://yourdomain.com/");
         webServerPrefix = config.getString("web_server_prefix", "[VerifyMC]");
+        forceAllowApproved = config.getBoolean("force_allow_approved", false);
         whitelistJsonPath = Paths.get(getServer().getWorldContainer().getAbsolutePath(), "whitelist.json");
         debug = config.getBoolean("debug", false);
         // Initialize resource manager
@@ -561,9 +563,17 @@ public class VerifyMC extends JavaPlugin implements Listener {
             event.disallow(Result.KICK_WHITELIST, msg);
             debugLog("Blocked unregistered player: " + player.getName() + " from IP: " + ip);
         } else {
-            // Ensure approved users are explicitly allowed even if vanilla whitelist rejected them earlier
-            event.setResult(Result.ALLOWED);
-            debugLog("Allowed registered player: " + player.getName() + " (Status: approved)");
+            // VerifyMC should only block users who are not approved.
+            // Do NOT overwrite deny results produced by other plugins/systems unless explicitly configured.
+            Result currentResult = event.getResult();
+            if (currentResult == Result.ALLOWED) {
+                debugLog("Approved player login remains allowed: " + player.getName() + " (Status: approved)");
+            } else if (forceAllowApproved) {
+                event.setResult(Result.ALLOWED);
+                debugLog("Force-allowed approved player by config: " + player.getName() + " (Previous result: " + currentResult + ")");
+            } else {
+                debugLog("Preserved non-allowed login result for approved player: " + player.getName() + " (Result: " + currentResult + ")");
+            }
         }
     }
 
