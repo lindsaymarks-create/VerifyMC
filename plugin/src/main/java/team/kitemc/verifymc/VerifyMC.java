@@ -432,29 +432,29 @@ public class VerifyMC extends JavaPlugin implements Listener {
             Map<String, Object> user = userDao.getUserByUuid(uuid);
             boolean ok;
             
+            boolean authmeEnabled = authmeService.isAuthmeEnabled();
+
             if (user != null) {
-                // User exists, update status to approved
+                // User exists, update status to approved and keep local auth fields synchronized
                 ok = userDao.updateUserStatus(uuid, "approved");
-                // If password is provided, update password
+                ok = userDao.updateUserEmail(uuid, email) && ok;
                 if (password != null && !password.isEmpty()) {
-                    userDao.updateUserPassword(uuid, password);
-                    // If Authme integration is enabled, register to Authme
-                    if (authmeService.isAuthmeEnabled()) {
-                        authmeService.registerToAuthme(targetName, password);
-                        sender.sendMessage("§a" + getMessage("authme.register_success", language).replace("{player}", targetName));
-                    }
+                    ok = userDao.updateUserPassword(uuid, password) && ok;
                 }
             } else {
                 // User doesn't exist, register new user (status as approved)
                 if (password != null && !password.isEmpty()) {
                     ok = userDao.registerUser(uuid, targetName, email, "approved", password);
-                    // If Authme integration is enabled, register to Authme
-                    if (authmeService.isAuthmeEnabled()) {
-                        authmeService.registerToAuthme(targetName, password);
-                        sender.sendMessage("§a" + getMessage("authme.register_success", language).replace("{player}", targetName));
-                    }
                 } else {
                     ok = userDao.registerUser(uuid, targetName, email, "approved");
+                }
+            }
+
+            if (authmeEnabled && password != null && !password.isEmpty()) {
+                boolean authmeOk = authmeService.registerToAuthme(targetName, password, email);
+                ok = ok && authmeOk;
+                if (authmeOk) {
+                    sender.sendMessage("§a" + getMessage("authme.register_success", language).replace("{player}", targetName));
                 }
             }
             
@@ -502,8 +502,8 @@ public class VerifyMC extends JavaPlugin implements Listener {
                 uuid = Bukkit.getOfflinePlayer(targetName).getUniqueId().toString();
             }
             
-            // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
-            if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+            // If Authme integration is enabled, keep AuthMe DB synchronized when user is removed
+            if (authmeService.isAuthmeEnabled()) {
                 authmeService.unregisterFromAuthme(targetName);
             }
             
