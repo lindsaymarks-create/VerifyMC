@@ -346,6 +346,47 @@ public class WebServer {
         if (debug) plugin.getLogger().info("[DEBUG] " + msg);
     }
 
+    private void putResponseMessage(JSONObject resp, String message) {
+        resp.put("msg", message);
+        resp.put("message", message);
+    }
+
+    private String getAuditOperator(HttpExchange exchange) {
+        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            if (!token.isBlank()) {
+                return "token:" + hashToken(token);
+            }
+        }
+        return "web-admin";
+    }
+
+    private String buildAuditTarget(String uuid, String username) {
+        String safeUuid = uuid == null ? "" : uuid.trim();
+        String safeUsername = username == null ? "" : username.trim();
+        if (safeUuid.isEmpty() && safeUsername.isEmpty()) {
+            return "unknown";
+        }
+        if (safeUuid.isEmpty()) {
+            return safeUsername;
+        }
+        if (safeUsername.isEmpty()) {
+            return safeUuid;
+        }
+        return safeUuid + "/" + safeUsername;
+    }
+
+    private Map<String, Object> buildAuditRecord(String action, String operator, String target, String detail, long timestamp) {
+        Map<String, Object> audit = new HashMap<>();
+        audit.put("action", action == null ? "unknown" : action);
+        audit.put("operator", operator == null || operator.isBlank() ? "web-admin" : operator);
+        audit.put("target", target == null || target.isBlank() ? "unknown" : target);
+        audit.put("detail", detail == null ? "" : detail);
+        audit.put("timestamp", timestamp);
+        return audit;
+    }
+
     /**
      * Authentication verification method
      * @param exchange HTTP exchange
@@ -1567,7 +1608,7 @@ public class WebServer {
                 Map<String, Object> user = userDao.getUserByUuid(uuid);
                 if (user == null) {
                     resp.put("success", false);
-                    resp.put("msg", getMsg("admin.user_not_found", language));
+                    putResponseMessage(resp, getMsg("admin.user_not_found", language));
                     sendJson(exchange, resp);
                     return;
                 }
@@ -1624,23 +1665,31 @@ public class WebServer {
                         }
                     }).start();
                 }
+
+                if (success) {
+                    String operator = getAuditOperator(exchange);
+                    String target = buildAuditTarget(uuid, username);
+                    auditDao.addAudit(buildAuditRecord(action, operator, target, reason, System.currentTimeMillis()));
+                }
                 
                 resp.put("success", success);
-                resp.put("msg", success ? 
+                String reviewMessage = success ? 
                     ("approve".equals(action) ? getMsg("review.approve_success", language) : getMsg("review.reject_success", language)) :
-                    getMsg("review.failed", language));
+                    getMsg("review.failed", language);
+                putResponseMessage(resp, reviewMessage);
                 
                 // WebSocket push
                 if (success) {
                     JSONObject wsMsg = new JSONObject();
                     wsMsg.put("type", action);
                     wsMsg.put("uuid", uuid);
-                    wsMsg.put("msg", resp.getString("msg"));
+                    wsMsg.put("msg", reviewMessage);
+                    wsMsg.put("message", reviewMessage);
                     wsServer.broadcastMessage(wsMsg.toString());
                 }
             } catch (Exception e) {
                 resp.put("success", false);
-                resp.put("message", getMsg("review.failed", language));
+                putResponseMessage(resp, getMsg("review.failed", language));
             }
             
             sendJson(exchange, resp);
@@ -1814,7 +1863,7 @@ public class WebServer {
                 Map<String, Object> user = userDao.getUserByUuid(uuid);
                 if (user == null) {
                     resp.put("success", false);
-                    resp.put("msg", getMsg("admin.user_not_found", language));
+                    putResponseMessage(resp, getMsg("admin.user_not_found", language));
                     sendJson(exchange, resp);
                     return;
                 }
@@ -1834,13 +1883,20 @@ public class WebServer {
                         authmeService.unregisterFromAuthme(username);
                     }
                 }
+
+                if (success) {
+                    String operator = getAuditOperator(exchange);
+                    String target = buildAuditTarget(uuid, username);
+                    auditDao.addAudit(buildAuditRecord("delete-user", operator, target, "", System.currentTimeMillis()));
+                }
                 
                 resp.put("success", success);
-                resp.put("msg", success ? getMsg("admin.delete_success", language) : getMsg("admin.delete_failed", language));
+                String deleteMessage = success ? getMsg("admin.delete_success", language) : getMsg("admin.delete_failed", language);
+                putResponseMessage(resp, deleteMessage);
             } catch (Exception e) {
                 debugLog("Delete user error: " + e.getMessage());
                 resp.put("success", false);
-                resp.put("msg", getMsg("admin.delete_failed", language));
+                putResponseMessage(resp, getMsg("admin.delete_failed", language));
             }
             
             sendJson(exchange, resp);
@@ -1882,7 +1938,7 @@ public class WebServer {
                 Map<String, Object> user = userDao.getUserByUuid(uuid);
                 if (user == null) {
                     resp.put("success", false);
-                    resp.put("msg", getMsg("admin.user_not_found", language));
+                    putResponseMessage(resp, getMsg("admin.user_not_found", language));
                     sendJson(exchange, resp);
                     return;
                 }
@@ -1902,13 +1958,20 @@ public class WebServer {
                         authmeService.unregisterFromAuthme(username);
                     }
                 }
+
+                if (success) {
+                    String operator = getAuditOperator(exchange);
+                    String target = buildAuditTarget(uuid, username);
+                    auditDao.addAudit(buildAuditRecord("ban-user", operator, target, "", System.currentTimeMillis()));
+                }
                 
                 resp.put("success", success);
-                resp.put("msg", success ? getMsg("admin.ban_success", language) : getMsg("admin.ban_failed", language));
+                String banMessage = success ? getMsg("admin.ban_success", language) : getMsg("admin.ban_failed", language);
+                putResponseMessage(resp, banMessage);
             } catch (Exception e) {
                 debugLog("Ban user error: " + e.getMessage());
                 resp.put("success", false);
-                resp.put("msg", getMsg("admin.ban_failed", language));
+                putResponseMessage(resp, getMsg("admin.ban_failed", language));
             }
             
             sendJson(exchange, resp);
@@ -1950,7 +2013,7 @@ public class WebServer {
                 Map<String, Object> user = userDao.getUserByUuid(uuid);
                 if (user == null) {
                     resp.put("success", false);
-                    resp.put("msg", getMsg("admin.user_not_found", language));
+                    putResponseMessage(resp, getMsg("admin.user_not_found", language));
                     sendJson(exchange, resp);
                     return;
                 }
@@ -1972,13 +2035,20 @@ public class WebServer {
                         authmeService.registerToAuthme(username, password, email);
                     }
                 }
+
+                if (success) {
+                    String operator = getAuditOperator(exchange);
+                    String target = buildAuditTarget(uuid, username);
+                    auditDao.addAudit(buildAuditRecord("unban-user", operator, target, "", System.currentTimeMillis()));
+                }
                 
                 resp.put("success", success);
-                resp.put("msg", success ? getMsg("admin.unban_success", language) : getMsg("admin.unban_failed", language));
+                String unbanMessage = success ? getMsg("admin.unban_success", language) : getMsg("admin.unban_failed", language);
+                putResponseMessage(resp, unbanMessage);
             } catch (Exception e) {
                 debugLog("Unban user error: " + e.getMessage());
                 resp.put("success", false);
-                resp.put("msg", getMsg("admin.unban_failed", language));
+                putResponseMessage(resp, getMsg("admin.unban_failed", language));
             }
             
             sendJson(exchange, resp);
@@ -2012,14 +2082,14 @@ public class WebServer {
             // Validate input
             if ((uuid == null || uuid.trim().isEmpty()) && (username == null || username.trim().isEmpty())) {
                 resp.put("success", false);
-                resp.put("msg", getMsg("admin.missing_user_identifier", language));
+                putResponseMessage(resp, getMsg("admin.missing_user_identifier", language));
                 sendJson(exchange, resp);
                 return;
             }
             
             if (newPassword == null || newPassword.trim().isEmpty()) {
                 resp.put("success", false);
-                resp.put("msg", getMsg("admin.password_required", language));
+                putResponseMessage(resp, getMsg("admin.password_required", language));
                 sendJson(exchange, resp);
                 return;
             }
@@ -2028,7 +2098,7 @@ public class WebServer {
             if (!authmeService.isValidPassword(newPassword)) {
                 resp.put("success", false);
                 String passwordRegex = plugin.getConfig().getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$");
-                resp.put("msg", getMsg("admin.invalid_password", language).replace("{regex}", passwordRegex));
+                putResponseMessage(resp, getMsg("admin.invalid_password", language).replace("{regex}", passwordRegex));
                 sendJson(exchange, resp);
                 return;
             }
@@ -2044,7 +2114,7 @@ public class WebServer {
                 
                 if (user == null) {
                     resp.put("success", false);
-                    resp.put("msg", getMsg("admin.user_not_found", language));
+                    putResponseMessage(resp, getMsg("admin.user_not_found", language));
                     sendJson(exchange, resp);
                     return;
                 }
@@ -2063,18 +2133,60 @@ public class WebServer {
                 }
 
                 if (success) {
+                    String operator = getAuditOperator(exchange);
+                    String target = buildAuditTarget(targetUuid, targetUsername);
+                    auditDao.addAudit(buildAuditRecord("change-password", operator, target, "password updated", System.currentTimeMillis()));
                     resp.put("success", true);
-                    resp.put("msg", getMsg("admin.password_change_success", language));
+                    putResponseMessage(resp, getMsg("admin.password_change_success", language));
                 } else {
                     resp.put("success", false);
-                    resp.put("msg", getMsg("admin.password_change_failed", language));
+                    putResponseMessage(resp, getMsg("admin.password_change_failed", language));
                 }
             } catch (Exception e) {
                 debugLog("Change password error: " + e.getMessage());
                 resp.put("success", false);
-                resp.put("msg", getMsg("admin.password_change_failed", language));
+                putResponseMessage(resp, getMsg("admin.password_change_failed", language));
             }
             
+            sendJson(exchange, resp);
+        });
+
+        // Query audit logs - requires authentication
+        server.createContext("/api/audits", exchange -> {
+            if (!isAuthenticated(exchange)) {
+                JSONObject resp = new JSONObject();
+                resp.put("success", false);
+                resp.put("message", "Authentication required");
+                sendJson(exchange, resp);
+                return;
+            }
+
+            if (!"GET".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(405, 0);
+                exchange.close();
+                return;
+            }
+
+            String query = exchange.getRequestURI().getQuery();
+            String language = "en";
+            if (query != null && query.contains("language=")) {
+                language = query.split("language=")[1].split("&")[0];
+            }
+
+            JSONObject resp = new JSONObject();
+            try {
+                List<Map<String, Object>> audits = auditDao.getAllAudits();
+                audits.sort((a, b) -> Long.compare(
+                    ((Number) b.getOrDefault("timestamp", 0L)).longValue(),
+                    ((Number) a.getOrDefault("timestamp", 0L)).longValue()
+                ));
+                resp.put("success", true);
+                resp.put("audits", audits);
+            } catch (Exception e) {
+                resp.put("success", false);
+                resp.put("message", getMsg("admin.load_failed", language));
+            }
+
             sendJson(exchange, resp);
         });
         

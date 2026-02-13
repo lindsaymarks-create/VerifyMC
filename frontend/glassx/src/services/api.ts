@@ -135,7 +135,17 @@ export interface ReviewRequest {
 
 export interface ReviewResponse {
   success: boolean
-  msg: string
+  msg?: string
+  message?: string
+}
+
+export interface AuditRecord {
+  action: string
+  operator: string
+  target: string
+  detail: string
+  timestamp: number
+  id?: number
 }
 
 export interface ChangePasswordRequest {
@@ -304,6 +314,12 @@ class ApiService {
       data: response.users,
       message: response.message
     }
+  }
+
+
+  // 获取审计日志
+  async getAudits(language: string = 'zh'): Promise<{ success: boolean; audits?: AuditRecord[]; message?: string }> {
+    return this.request<{ success: boolean; audits?: AuditRecord[]; message?: string }>(`/audits?language=${language}`)
   }
 
   // 获取用户状态

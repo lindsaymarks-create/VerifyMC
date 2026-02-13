@@ -31,8 +31,25 @@ public class FileAuditDao implements AuditDao {
     }
 
     @Override
-    public void addAudit(Map<String, Object> audit) {
-        audits.add(audit);
+    public synchronized void addAudit(Map<String, Object> audit) {
+        if (audit == null) return;
+        Object action = audit.get("action");
+        Object operator = audit.get("operator");
+        Object target = audit.get("target");
+        Object timestamp = audit.get("timestamp");
+        if (!(action instanceof String) || ((String) action).isBlank()) return;
+        if (!(operator instanceof String) || ((String) operator).isBlank()) return;
+        if (!(target instanceof String) || ((String) target).isBlank()) return;
+        if (!(timestamp instanceof Number)) return;
+
+        Map<String, Object> normalized = new HashMap<>();
+        normalized.put("action", action);
+        normalized.put("operator", operator);
+        normalized.put("target", target);
+        normalized.put("detail", String.valueOf(audit.getOrDefault("detail", "")));
+        normalized.put("timestamp", ((Number) timestamp).longValue());
+
+        audits.add(normalized);
         save();
     }
 
