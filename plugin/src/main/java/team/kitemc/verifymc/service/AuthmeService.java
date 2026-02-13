@@ -38,14 +38,6 @@ public class AuthmeService {
         return plugin.getConfig().getBoolean("authme.require_password", false);
     }
 
-    public boolean isAutoRegisterEnabled() {
-        return plugin.getConfig().getBoolean("authme.auto_register", false);
-    }
-
-    public boolean isAutoUnregisterEnabled() {
-        return plugin.getConfig().getBoolean("authme.auto_unregister", false);
-    }
-
     public boolean isValidPassword(String password) {
         if (password == null || password.trim().isEmpty()) {
             return false;

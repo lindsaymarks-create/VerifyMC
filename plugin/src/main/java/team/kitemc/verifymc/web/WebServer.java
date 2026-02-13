@@ -622,8 +622,6 @@ public class WebServer {
             JSONObject authme = new JSONObject();
             authme.put("enabled", config.getBoolean("authme.enabled", false));
             authme.put("require_password", config.getBoolean("authme.require_password", false));
-            authme.put("auto_register", config.getBoolean("authme.auto_register", false));
-            authme.put("auto_unregister", config.getBoolean("authme.auto_unregister", false));
             authme.put("password_regex", config.getString("authme.password_regex", "^[a-zA-Z0-9_]{3,16}$"));
             // Username regex pattern
             frontend.put("username_regex", config.getString("username_regex", "^[a-zA-Z0-9_-]{3,16}$"));

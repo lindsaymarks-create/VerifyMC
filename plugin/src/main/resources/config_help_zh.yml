@@ -162,10 +162,6 @@ authme:
   enabled: true
   # 是否强制在Web注册时要求输入密码
   require_password: true
-  # 是否在通过审核时自动注册至Authme
-  auto_register: false
-  # 是否在删除用户时自动从Authme注销
-  auto_unregister: false
   # 密码正则表达式
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
   # AuthMe 直连数据库配置

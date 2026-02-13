@@ -66,8 +66,6 @@ storage:
 authme:
   enabled: true
   require_password: true
-  auto_register: false
-  auto_unregister: false
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
   database:
     type: mysql
