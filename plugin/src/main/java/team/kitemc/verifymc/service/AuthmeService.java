@@ -123,30 +123,22 @@ public class AuthmeService {
             return false;
         }
 
+        String normalizedName = username.trim();
+        String loweredName = normalizedName.toLowerCase(Locale.ROOT);
+        String passwordHash = hashPassword(newPassword);
+        long now = System.currentTimeMillis();
+
         String table = getTableName();
         ColumnConfig columns = getColumns();
-        String loweredName = username.trim().toLowerCase(Locale.ROOT);
 
-        List<String> setColumns = new ArrayList<>();
-        List<Object> params = new ArrayList<>();
+        try (Connection connection = getConnection()) {
+            boolean updated = updateAuthmeRecord(connection, table, columns, loweredName, normalizedName, passwordHash, null, now);
+            if (updated) {
+                return true;
+            }
 
-        setColumns.add(columns.password + "=?");
-        params.add(hashPassword(newPassword));
-        if (!columns.salt.isEmpty()) {
-            setColumns.add(columns.salt + "=?");
-            params.add("");
-        }
-
-        String updateSql = "UPDATE " + table + " SET " + String.join(", ", setColumns)
-            + " WHERE LOWER(" + columns.name + ")=LOWER(?)";
-        params.add(loweredName);
-
-        try (Connection connection = getConnection();
-             PreparedStatement ps = connection.prepareStatement(updateSql)) {
-            bindParams(ps, params);
-            int rows = ps.executeUpdate();
-            debugLog("Updated AuthMe password for " + username + ", rows=" + rows);
-            return rows > 0;
+            debugLog("AuthMe user not found when changing password, creating a new record for " + normalizedName);
+            return insertAuthmeRecord(connection, table, columns, loweredName, normalizedName, passwordHash, null, now);
         } catch (SQLException e) {
             debugLog("Failed to change password in AuthMe DB: " + e.getMessage());
             return false;
