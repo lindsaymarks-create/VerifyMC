@@ -257,10 +257,6 @@ authme:
   enabled: true
   # Whether to require password input during web registration
   require_password: true
-  # Whether to automatically register to Authme when approval is granted
-  auto_register: false
-  # Whether to automatically unregister from Authme when user is deleted
-  auto_unregister: false
   # Password regex pattern
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
   # Direct DB mode for AuthMe integration

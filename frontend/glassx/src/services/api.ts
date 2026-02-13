@@ -24,8 +24,6 @@ export interface ConfigResponse {
   authme: {
     enabled: boolean
     require_password: boolean
-    auto_register: boolean
-    auto_unregister: boolean
     password_regex: string
   }
   captcha?: {
