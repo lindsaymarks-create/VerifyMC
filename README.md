@@ -130,6 +130,10 @@ whitelist_mode: plugin
 # Registration URL displayed to non-whitelisted players when in 'plugin' mode.
 web_register_url: https://domain.com/
 
+# Force approved users to ALLOWED even if another plugin/system already denied login.
+# WARNING: Enabling this may bypass external security/compliance checks; keep false unless you fully understand the risks.
+force_allow_approved: false
+
 # ----------------------------------------
 # Registration
 # ----------------------------------------
