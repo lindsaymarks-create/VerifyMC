@@ -262,6 +262,55 @@ authme:
   auto_unregister: false
   # 密码正则表达式
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
+  # AuthMe 直连数据库配置
+  database:
+    # 数据库类型: mysql 或 sqlite
+    type: mysql
+    # AuthMe 用户表名
+    table: authme
+    # AuthMe 字段映射（兼容 AuthMeReloaded 配置命名）
+    columns:
+      # 主键 ID 列
+      mySQLColumnId: id
+      # 玩家昵称
+      mySQLColumnName: username
+      # 玩家真实名称
+      mySQLRealName: realname
+      # 密码
+      mySQLColumnPassword: password
+      # 密码盐值（未使用可留空）
+      mySQLColumnSalt: ''
+      # 邮箱
+      mySQLColumnEmail: email
+      # 是否已登录
+      mySQLColumnLogged: isLogged
+      # 是否有有效会话
+      mySQLColumnHasSession: hasSession
+      # 最后登录 IP
+      mySQLColumnIp: ip
+      # 最后登录时间
+      mySQLColumnLastLogin: lastlogin
+      # 注册时间
+      mySQLColumnRegisterDate: regdate
+      # 注册 IP
+      mySQLColumnRegisterIp: regip
+      # 上次位置 X/Y/Z
+      mySQLlastlocX: x
+      mySQLlastlocY: y
+      mySQLlastlocZ: z
+      # 上次所在世界
+      mySQLlastlocWorld: world
+      # 玩家 UUID（可选）
+      mySQLPlayerUUID: ''
+    mysql:
+      host: 127.0.0.1
+      port: 3306
+      database: authme
+      user: root
+      password: yourpassword
+    sqlite:
+      # 相对路径基于服务器根目录
+      path: plugins/AuthMe/authme.db
 
 # ----------------------------------------
 # 图形验证码配置

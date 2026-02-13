@@ -256,6 +256,51 @@ authme:
   auto_unregister: false
   # Password regex pattern
   password_regex: "^[a-zA-Z0-9_]{3,16}$"
+  # Direct DB mode for AuthMe integration
+  database:
+    # Database type: mysql or sqlite
+    type: mysql
+    # AuthMe users table name
+    table: authme
+    # AuthMe column mapping (compatible with AuthMeReloaded config naming)
+    columns:
+      # Primary key ID column
+      mySQLColumnId: id
+      # Player name
+      mySQLColumnName: username
+      # Player real name
+      mySQLRealName: realname
+      # Password hash column
+      mySQLColumnPassword: password
+      # Salt column (leave empty if unused)
+      mySQLColumnSalt: ''
+      # Email
+      mySQLColumnEmail: email
+      # Login/session flags
+      mySQLColumnLogged: isLogged
+      mySQLColumnHasSession: hasSession
+      # Last login IP/time
+      mySQLColumnIp: ip
+      mySQLColumnLastLogin: lastlogin
+      # Registration time/IP
+      mySQLColumnRegisterDate: regdate
+      mySQLColumnRegisterIp: regip
+      # Last location X/Y/Z and world
+      mySQLlastlocX: x
+      mySQLlastlocY: y
+      mySQLlastlocZ: z
+      mySQLlastlocWorld: world
+      # Player UUID column (optional)
+      mySQLPlayerUUID: ''
+    mysql:
+      host: 127.0.0.1
+      port: 3306
+      database: authme
+      user: root
+      password: yourpassword
+    sqlite:
+      # Relative paths are resolved from server root
+      path: plugins/AuthMe/authme.db
 
 # ----------------------------------------
 # Captcha Configuration
