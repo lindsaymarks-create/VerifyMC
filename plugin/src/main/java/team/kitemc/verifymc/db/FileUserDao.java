@@ -248,30 +248,44 @@ public class FileUserDao implements UserDao {
     @Override
     public boolean updateUserPassword(String uuidOrName, String password) {
         debugLog("updateUserPassword called: uuidOrName=" + uuidOrName);
-        Map<String, Object> user = null;
-        
-        // First try to find as UUID
-        user = users.get(uuidOrName);
-        
-        // If not found, try to find as username
-        if (user == null) {
-            for (Map<String, Object> u : users.values()) {
-                if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
-                    user = u;
-                    break;
-                }
-            }
-        }
-        
+        Map<String, Object> user = findUser(uuidOrName);
         if (user == null) {
             debugLog("User not found: " + uuidOrName);
             return false;
         }
-        
+
         user.put("password", password);
         save();
         debugLog("User password updated: " + user.get("username"));
         return true;
+    }
+
+    @Override
+    public boolean updateUserEmail(String uuidOrName, String email) {
+        debugLog("updateUserEmail called: uuidOrName=" + uuidOrName);
+        Map<String, Object> user = findUser(uuidOrName);
+        if (user == null) {
+            debugLog("User not found: " + uuidOrName);
+            return false;
+        }
+
+        user.put("email", email);
+        save();
+        debugLog("User email updated: " + user.get("username"));
+        return true;
+    }
+
+    private Map<String, Object> findUser(String uuidOrName) {
+        Map<String, Object> user = users.get(uuidOrName);
+        if (user != null) {
+            return user;
+        }
+        for (Map<String, Object> u : users.values()) {
+            if (u.get("username") != null && u.get("username").toString().equalsIgnoreCase(uuidOrName)) {
+                return u;
+            }
+        }
+        return null;
     }
 
     @Override

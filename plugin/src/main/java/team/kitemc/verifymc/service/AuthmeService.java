@@ -55,6 +55,10 @@ public class AuthmeService {
     }
 
     public boolean registerToAuthme(String username, String password) {
+        return registerToAuthme(username, password, null);
+    }
+
+    public boolean registerToAuthme(String username, String password, String email) {
         if (!isAuthmeEnabled()) {
             debugLog("AuthMe not enabled, skipping registration");
             return false;
@@ -83,9 +87,9 @@ public class AuthmeService {
             }
 
             if (exists) {
-                return updateAuthmeRecord(connection, table, columns, loweredName, normalizedName, passwordHash, now);
+                return updateAuthmeRecord(connection, table, columns, loweredName, normalizedName, passwordHash, email, now);
             }
-            return insertAuthmeRecord(connection, table, columns, loweredName, normalizedName, passwordHash, now);
+            return insertAuthmeRecord(connection, table, columns, loweredName, normalizedName, passwordHash, email, now);
         } catch (SQLException e) {
             debugLog("Failed to register user to AuthMe DB: " + e.getMessage());
             return false;
@@ -157,8 +161,56 @@ public class AuthmeService {
         }
     }
 
+
+
+    public String getPasswordHashFromAuthme(String username) {
+        if (!isAuthmeEnabled() || username == null || username.trim().isEmpty()) {
+            return null;
+        }
+
+        String table = getTableName();
+        ColumnConfig columns = getColumns();
+        String loweredName = username.trim().toLowerCase(Locale.ROOT);
+        String sql = "SELECT " + columns.password + " FROM " + table + " WHERE LOWER(" + columns.name + ")=LOWER(?) LIMIT 1";
+        try (Connection connection = getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, loweredName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Failed to read AuthMe password hash: " + e.getMessage());
+        }
+        return null;
+    }
+    public String getEmailFromAuthme(String username) {
+        if (!isAuthmeEnabled() || username == null || username.trim().isEmpty()) {
+            return null;
+        }
+
+        String table = getTableName();
+        ColumnConfig columns = getColumns();
+        if (columns.email.isEmpty()) {
+            return null;
+        }
+        String loweredName = username.trim().toLowerCase(Locale.ROOT);
+        String sql = "SELECT " + columns.email + " FROM " + table + " WHERE LOWER(" + columns.name + ")=LOWER(?) LIMIT 1";
+        try (Connection connection = getConnection(); PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, loweredName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+            }
+        } catch (SQLException e) {
+            debugLog("Failed to read AuthMe email: " + e.getMessage());
+        }
+        return null;
+    }
+
     private boolean updateAuthmeRecord(Connection connection, String table, ColumnConfig columns,
-                                       String loweredName, String normalizedName, String passwordHash, long now)
+                                       String loweredName, String normalizedName, String passwordHash, String email, long now)
         throws SQLException {
         List<String> setColumns = new ArrayList<>();
         List<Object> params = new ArrayList<>();
@@ -171,6 +223,10 @@ public class AuthmeService {
         if (!columns.salt.isEmpty()) {
             setColumns.add(columns.salt + "=?");
             params.add("");
+        }
+        if (!columns.email.isEmpty() && email != null) {
+            setColumns.add(columns.email + "=?");
+            params.add(email);
         }
         if (!columns.lastLogin.isEmpty()) {
             setColumns.add(columns.lastLogin + "=?");
@@ -190,7 +246,7 @@ public class AuthmeService {
     }
 
     private boolean insertAuthmeRecord(Connection connection, String table, ColumnConfig columns,
-                                       String loweredName, String normalizedName, String passwordHash, long now)
+                                       String loweredName, String normalizedName, String passwordHash, String email, long now)
         throws SQLException {
         List<String> insertColumns = new ArrayList<>();
         List<Object> params = new ArrayList<>();
@@ -203,7 +259,7 @@ public class AuthmeService {
         params.add(passwordHash);
 
         addOptionalColumn(insertColumns, params, columns.salt, "");
-        addOptionalColumn(insertColumns, params, columns.email, null);
+        addOptionalColumn(insertColumns, params, columns.email, email);
         addOptionalColumn(insertColumns, params, columns.isLogged, 0);
         addOptionalColumn(insertColumns, params, columns.hasSession, 0);
         addOptionalColumn(insertColumns, params, columns.lastIp, "");

@@ -17,6 +17,7 @@ import team.kitemc.verifymc.service.AuthmeService;
 import team.kitemc.verifymc.service.CaptchaService;
 import team.kitemc.verifymc.service.QuestionnaireService;
 import team.kitemc.verifymc.service.DiscordService;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -191,6 +192,104 @@ public class WebServer {
         } catch (NoSuchAlgorithmException e) {
             return "hash_error";
         }
+    }
+
+    private void sanitizeUserForResponse(Map<String, Object> user) {
+        if (user != null) {
+            user.remove("password");
+        }
+    }
+
+
+    private Map<String, Object> ensureLocalApprovedUserFromAuthme(String username) {
+        if (!authmeService.isAuthmeEnabled() || username == null || username.trim().isEmpty()) {
+            return userDao.getUserByUsername(username);
+        }
+
+        String normalizedName = username.trim();
+        String authmePasswordHash = authmeService.getPasswordHashFromAuthme(normalizedName);
+        String authmeEmail = authmeService.getEmailFromAuthme(normalizedName);
+        boolean authmeUserExists = authmePasswordHash != null && !authmePasswordHash.trim().isEmpty();
+        if (!authmeUserExists) {
+            return userDao.getUserByUsername(normalizedName);
+        }
+
+        String normalizedEmail = authmeEmail != null ? authmeEmail.trim() : null;
+        String normalizedHash = authmePasswordHash.trim();
+
+        Map<String, Object> localUser = userDao.getUserByUsername(normalizedName);
+        if (localUser == null) {
+            String uuid = Bukkit.getOfflinePlayer(normalizedName).getUniqueId().toString();
+            boolean created = userDao.registerUser(uuid, normalizedName, normalizedEmail, "approved", normalizedHash);
+            if (!created) {
+                return null;
+            }
+            return userDao.getUserByUuid(uuid);
+        }
+
+        String status = localUser.get("status") != null ? String.valueOf(localUser.get("status")) : "";
+        if ("pending".equalsIgnoreCase(status)) {
+            Object uuidObj = localUser.get("uuid");
+            String updateTarget = uuidObj != null ? String.valueOf(uuidObj) : normalizedName;
+            userDao.updateUserStatus(updateTarget, "approved");
+            userDao.updateUserPassword(updateTarget, normalizedHash);
+            if (normalizedEmail != null && !normalizedEmail.isEmpty()) {
+                userDao.updateUserEmail(updateTarget, normalizedEmail);
+            }
+            return userDao.getUserByUsername(normalizedName);
+        }
+
+        return localUser;
+    }
+
+    private void syncUserFromAuthme(Map<String, Object> user) {
+        if (user == null || !authmeService.isAuthmeEnabled()) {
+            return;
+        }
+
+        String username = (String) user.get("username");
+        if (username == null || username.trim().isEmpty()) {
+            return;
+        }
+
+        String status = user.get("status") != null ? String.valueOf(user.get("status")) : "";
+        if (!"approved".equalsIgnoreCase(status)) {
+            return;
+        }
+
+        Object uuid = user.get("uuid");
+        String updateTarget = uuid != null ? String.valueOf(uuid) : username;
+
+        String authmeEmail = authmeService.getEmailFromAuthme(username);
+        if (authmeEmail != null && !authmeEmail.trim().isEmpty()) {
+            String normalizedEmail = authmeEmail.trim();
+            String localEmail = user.get("email") != null ? String.valueOf(user.get("email")) : "";
+            if (!normalizedEmail.equals(localEmail)) {
+                if (userDao.updateUserEmail(updateTarget, normalizedEmail)) {
+                    user.put("email", normalizedEmail);
+                }
+            }
+        }
+
+        String authmeHash = authmeService.getPasswordHashFromAuthme(username);
+        if (authmeHash != null && !authmeHash.trim().isEmpty()) {
+            String normalizedHash = authmeHash.trim();
+            String localPassword = user.get("password") != null ? String.valueOf(user.get("password")) : "";
+            if (!normalizedHash.equals(localPassword)) {
+                if (userDao.updateUserPassword(updateTarget, normalizedHash)) {
+                    user.put("password", normalizedHash);
+                }
+            }
+        }
+    }
+
+    private String resolveUserEmail(Map<String, Object> user) {
+        if (user == null) {
+            return "";
+        }
+        syncUserFromAuthme(user);
+        Object email = user.get("email");
+        return email != null ? String.valueOf(email) : "";
     }
 
     private void logQuestionnaireCall(String event, String ip, String uuid, String email, String requestId, JSONObject extra) {
@@ -546,15 +645,15 @@ public class WebServer {
                 return;
             }
             
-            // Look up user in database
-            java.util.Map<String, Object> user = userDao.getUserByUsername(username);
+            // Look up user in database (and reconcile pending/missing user from AuthMe if needed)
+            java.util.Map<String, Object> user = ensureLocalApprovedUserFromAuthme(username);
             
             if (user != null) {
                 resp.put("success", true);
                 resp.put("found", true);
                 resp.put("username", user.get("username"));
                 resp.put("status", user.get("status"));
-                resp.put("email", user.get("email"));
+                resp.put("email", resolveUserEmail(user));
                 debugLog("Whitelist check for " + username + ": found, status=" + user.get("status"));
             } else {
                 resp.put("success", true);
@@ -1091,8 +1190,8 @@ public class WebServer {
                     return;
                 }
             }
-            // Username uniqueness check
-            if (userDao.getUserByUsername(username) != null) {
+            // Username uniqueness check (AuthMe user should be materialized as approved locally)
+            if (ensureLocalApprovedUserFromAuthme(username) != null) {
                 debugLog("Username already exists: " + username);
                 JSONObject resp = new JSONObject();
                 resp.put("success", false);
@@ -1278,11 +1377,13 @@ public class WebServer {
                 Long questionnaireScoredAt = submissionRecord != null ? submissionRecord.submittedAt : null;
                 boolean ok;
 
-                // Choose registration method based on whether password is provided
-                if (password != null && !password.trim().isEmpty()) {
-                    ok = userDao.registerUser(uuid, username, email, status, password, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
+                String storageEmail = email;
+                String storagePassword = (password == null || password.trim().isEmpty()) ? null : password;
+
+                if (storagePassword != null) {
+                    ok = userDao.registerUser(uuid, username, storageEmail, status, storagePassword, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
                 } else {
-                    ok = userDao.registerUser(uuid, username, email, status, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
+                    ok = userDao.registerUser(uuid, username, storageEmail, status, questionnaireScore, questionnairePassedValue, questionnaireReviewSummary, questionnaireScoredAt);
                 }
                 
                 debugLog("registerUser result: " + ok);
@@ -1293,10 +1394,9 @@ public class WebServer {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
                     });
                     
-                    // If Authme integration is enabled and auto registration is enabled, register to Authme
-                    if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() && 
-                        password != null && !password.trim().isEmpty()) {
-                        authmeService.registerToAuthme(username, password);
+                    // If AuthMe integration is enabled, keep AuthMe DB synchronized
+                    if (authmeService.isAuthmeEnabled() && password != null && !password.trim().isEmpty()) {
+                        authmeService.registerToAuthme(username, password, email);
                     }
                 }
                 if (!ok) {
@@ -1390,8 +1490,9 @@ public class WebServer {
                 List<Map<String, Object>> users = userDao.getPendingUsers();
                 // Ensure each user contains email and regTime fields
                 for (Map<String, Object> user : users) {
+                    sanitizeUserForResponse(user);
                     if (!user.containsKey("regTime")) user.put("regTime", null);
-                    if (!user.containsKey("email")) user.put("email", "");
+                    user.put("email", resolveUserEmail(user));
                     if (!user.containsKey("questionnaire_score")) user.put("questionnaire_score", null);
                     if (!user.containsKey("questionnaire_review_summary")) user.put("questionnaire_review_summary", null);
                 }
@@ -1458,10 +1559,14 @@ public class WebServer {
                 
                 String username = (String) user.get("username");
                 String password = (String) user.get("password");
-                String userEmail = (String) user.get("email");
+                String userEmail = user.get("email") != null ? String.valueOf(user.get("email")) : "";
                 
                 String status = "approve".equals(action) ? "approved" : "rejected";
                 boolean success = userDao.updateUserStatus(uuid, status);
+
+                if (success && !authmeService.isAuthmeEnabled()) {
+                    userDao.updateUserPassword(uuid, null);
+                }
                 
                 if (success && username != null) {
                     if ("approve".equals(action)) {
@@ -1471,10 +1576,9 @@ public class WebServer {
                             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
                         });
 
-                        // If Authme integration is enabled and auto registration is enabled, and password exists, register to Authme
-                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoRegisterEnabled() &&
-                            password != null && !password.trim().isEmpty()) {
-                            authmeService.registerToAuthme(username, password);
+                        // If AuthMe integration is enabled, keep AuthMe DB synchronized for approved users
+                        if (authmeService.isAuthmeEnabled() && password != null && !password.trim().isEmpty()) {
+                            authmeService.registerToAuthme(username, password, userEmail);
                         }
                     } else {
                         // Review rejected, ensure user is not in whitelist
@@ -1483,8 +1587,8 @@ public class WebServer {
                             org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + username);
                         });
 
-                        // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
-                        if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+                        // If AuthMe integration is enabled, keep AuthMe DB synchronized for rejected users
+                        if (authmeService.isAuthmeEnabled()) {
                             authmeService.unregisterFromAuthme(username);
                         }
                     }
@@ -1546,8 +1650,9 @@ public class WebServer {
                 List<Map<String, Object>> filtered = new java.util.ArrayList<>();
                 for (Map<String, Object> user : users) {
                     if (!"pending".equalsIgnoreCase(String.valueOf(user.get("status")))) {
+                        sanitizeUserForResponse(user);
                         if (!user.containsKey("regTime")) user.put("regTime", null);
-                        if (!user.containsKey("email")) user.put("email", "");
+                        user.put("email", resolveUserEmail(user));
                         filtered.add(user);
                     }
                 }
@@ -1625,8 +1730,9 @@ public class WebServer {
                 
                 // Ensure required fields exist (no need to filter pending users as they're already excluded)
                 for (Map<String, Object> user : users) {
+                    sanitizeUserForResponse(user);
                     if (!user.containsKey("regTime")) user.put("regTime", null);
-                    if (!user.containsKey("email")) user.put("email", "");
+                    user.put("email", resolveUserEmail(user));
                     if (!user.containsKey("questionnaire_score")) user.put("questionnaire_score", null);
                     if (!user.containsKey("questionnaire_review_summary")) user.put("questionnaire_review_summary", null);
                 }
@@ -1708,8 +1814,8 @@ public class WebServer {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + username);
                     });
                     
-                    // If Authme integration is enabled and auto unregister is configured, unregister user from Authme
-                    if (authmeService.isAuthmeEnabled() && authmeService.isAutoUnregisterEnabled()) {
+                    // If AuthMe integration is enabled, keep AuthMe DB synchronized when deleting users
+                    if (authmeService.isAuthmeEnabled()) {
                         authmeService.unregisterFromAuthme(username);
                     }
                 }
@@ -1775,6 +1881,11 @@ public class WebServer {
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist remove " + username);
                     });
+
+                    // Keep AuthMe storing only approved users
+                    if (authmeService.isAuthmeEnabled()) {
+                        authmeService.unregisterFromAuthme(username);
+                    }
                 }
                 
                 resp.put("success", success);
@@ -1830,6 +1941,8 @@ public class WebServer {
                 }
                 
                 String username = (String) user.get("username");
+                String password = (String) user.get("password");
+                String email = user.get("email") != null ? String.valueOf(user.get("email")) : "";
                 boolean success = userDao.updateUserStatus(uuid, "approved");
                 
                 if (success && username != null) {
@@ -1838,6 +1951,11 @@ public class WebServer {
                     org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                         org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "whitelist add " + username);
                     });
+
+                    // Only approved users are synchronized to AuthMe
+                    if (authmeService.isAuthmeEnabled() && password != null && !password.trim().isEmpty()) {
+                        authmeService.registerToAuthme(username, password, email);
+                    }
                 }
                 
                 resp.put("success", success);
@@ -1918,16 +2036,18 @@ public class WebServer {
                 
                 String targetUsername = (String) user.get("username");
                 String targetUuid = (String) user.get("uuid");
+                String targetStatus = user.get("status") != null ? String.valueOf(user.get("status")) : "";
                 
-                // Update password
-                boolean success = userDao.updateUserPassword(targetUuid, newPassword);
-                
+                boolean success;
+                if (authmeService.isAuthmeEnabled() && "approved".equalsIgnoreCase(targetStatus)) {
+                    boolean authmeSuccess = authmeService.changePasswordInAuthme(targetUsername, newPassword);
+                    boolean localSuccess = userDao.updateUserPassword(targetUuid, newPassword);
+                    success = authmeSuccess && localSuccess;
+                } else {
+                    success = userDao.updateUserPassword(targetUuid, newPassword);
+                }
+
                 if (success) {
-                    // If Authme integration is enabled, synchronize Authme password update
-                    if (authmeService.isAuthmeEnabled()) {
-                        authmeService.changePasswordInAuthme(targetUsername, newPassword);
-                    }
-                    
                     resp.put("success", true);
                     resp.put("msg", getMsg("admin.password_change_success", language));
                 } else {
