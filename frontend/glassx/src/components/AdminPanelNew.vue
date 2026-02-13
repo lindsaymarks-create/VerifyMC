@@ -660,11 +660,11 @@ const approveUser = async (user: any) => {
     })
 
     if (response.success) {
-      notifyResult(true, 'admin.review.messages.approve_success', response.msg)
+      notifyResult(true, 'admin.review.messages.approve_success', response.message || response.msg)
       await loadPendingUsers()
       await loadAllUsers()
     } else {
-      notifyResult(false, 'admin.review.messages.error', response.msg)
+      notifyResult(false, 'admin.review.messages.error', response.message || response.msg)
     }
   } catch (error) {
     notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
@@ -690,12 +690,12 @@ const confirmReject = async () => {
     })
 
     if (response.success) {
-      notifyResult(true, 'admin.review.messages.reject_success', response.msg)
+      notifyResult(true, 'admin.review.messages.reject_success', response.message || response.msg)
       await loadPendingUsers()
       await loadAllUsers()
       closeRejectDialog()
     } else {
-      notifyResult(false, 'admin.review.messages.error', response.msg)
+      notifyResult(false, 'admin.review.messages.error', response.message || response.msg)
     }
   } catch (error) {
     notification.error(t('admin.review.messages.error'), t('admin.review.messages.error'))
@@ -733,10 +733,10 @@ const confirmDelete = async () => {
     const response = await apiService.deleteUser(selectedUser.value.uuid, locale.value)
 
     if (response.success) {
-      notifyResult(true, 'admin.users.messages.delete_success', response.msg)
+      notifyResult(true, 'admin.users.messages.delete_success', response.message || response.msg)
       await loadAllUsers()
     } else {
-      notifyResult(false, 'admin.users.messages.error', response.msg)
+      notifyResult(false, 'admin.users.messages.error', response.message || response.msg)
     }
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
@@ -756,10 +756,10 @@ const confirmBan = async () => {
     const response = await apiService.banUser(selectedUser.value.uuid, locale.value)
 
     if (response.success) {
-      notifyResult(true, 'admin.users.messages.ban_success', response.msg)
+      notifyResult(true, 'admin.users.messages.ban_success', response.message || response.msg)
       await loadAllUsers()
     } else {
-      notifyResult(false, 'admin.users.messages.error', response.msg)
+      notifyResult(false, 'admin.users.messages.error', response.message || response.msg)
     }
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
@@ -779,10 +779,10 @@ const confirmUnban = async () => {
     const response = await apiService.unbanUser(selectedUser.value.uuid, locale.value)
 
     if (response.success) {
-      notifyResult(true, 'admin.users.messages.unban_success', response.msg)
+      notifyResult(true, 'admin.users.messages.unban_success', response.message || response.msg)
       await loadAllUsers()
     } else {
-      notifyResult(false, 'admin.users.messages.error', response.msg)
+      notifyResult(false, 'admin.users.messages.error', response.message || response.msg)
     }
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))
@@ -805,12 +805,12 @@ const confirmChangePassword = async () => {
     })
 
     if (response.success) {
-      notifyResult(true, 'admin.users.messages.password_change_success', response.msg)
+      notifyResult(true, 'admin.users.messages.password_change_success', response.message || response.msg)
       showPasswordDialog.value = false
       newPassword.value = ''
       selectedUser.value = null
     } else {
-      notifyResult(false, 'admin.users.messages.error', response.msg)
+      notifyResult(false, 'admin.users.messages.error', response.message || response.msg)
     }
   } catch (error) {
     notification.error(t('admin.users.messages.error'), t('admin.users.messages.error'))

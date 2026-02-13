@@ -24,13 +24,29 @@ public class MysqlAuditDao implements AuditDao {
 
     @Override
     public void addAudit(Map<String, Object> audit) {
+        if (audit == null) return;
+        Object actionObj = audit.get("action");
+        Object operatorObj = audit.get("operator");
+        Object targetObj = audit.get("target");
+        Object timestampObj = audit.get("timestamp");
+        if (!(actionObj instanceof String) || ((String) actionObj).isBlank()) return;
+        if (!(operatorObj instanceof String) || ((String) operatorObj).isBlank()) return;
+        if (!(targetObj instanceof String) || ((String) targetObj).isBlank()) return;
+        if (!(timestampObj instanceof Number)) return;
+
+        String action = (String) actionObj;
+        String operator = (String) operatorObj;
+        String target = (String) targetObj;
+        String detail = String.valueOf(audit.getOrDefault("detail", ""));
+        long timestamp = ((Number) timestampObj).longValue();
+
         String sql = "INSERT INTO audits (action, operator, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, (String)audit.get("action"));
-            ps.setString(2, (String)audit.get("operator"));
-            ps.setString(3, (String)audit.get("target"));
-            ps.setString(4, (String)audit.get("detail"));
-            ps.setLong(5, (Long)audit.get("timestamp"));
+            ps.setString(1, action);
+            ps.setString(2, operator);
+            ps.setString(3, target);
+            ps.setString(4, detail);
+            ps.setLong(5, timestamp);
             ps.executeUpdate();
         } catch (SQLException ignored) {}
     }
