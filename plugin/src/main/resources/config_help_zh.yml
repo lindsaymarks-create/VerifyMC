@@ -35,6 +35,9 @@ max_accounts_per_email: 2
 whitelist_mode: plugin
 # 在 'plugin' 模式下，向未在白名单中的玩家显示的注册URL。
 web_register_url: https://domain.com/
+# 即使其他插件/系统已拒绝登录，也会将已通过审核玩家强制设为 ALLOWED。
+# 警告：开启后可能绕过外部安全/合规检查，除非你明确了解影响，否则请保持 false。
+force_allow_approved: false
 
 # ----------------------------------------
 # 注册
