@@ -201,12 +201,7 @@ public class VerifyMC extends JavaPlugin implements Listener {
         
         // Only start whitelist.json watcher in bukkit mode
         if ("bukkit".equalsIgnoreCase(whitelistMode) && whitelistJsonSync) {
-            // Folia doesn't support async repeating tasks, disable whitelist.json watcher on Folia
-            if (!isFoliaServer()) {
-                startWhitelistJsonWatcher();
-            } else {
-                getLogger().info("§e[VerifyMC] Whitelist.json auto-sync disabled on Folia (use manual /vmc reload instead)");
-            }
+            startWhitelistJsonWatcher();
         }
         // Compatibility detection and hints
         String serverName = getServer().getName().toLowerCase();
@@ -215,7 +210,6 @@ public class VerifyMC extends JavaPlugin implements Listener {
             getLogger().info(getMessage("server.detected.folia"));
             getLogger().info("§e[VerifyMC] Folia compatibility mode enabled:");
             getLogger().info("§e  - Player kick uses delayed scheduling");
-            getLogger().info("§e  - Whitelist.json auto-sync disabled (use /vmc reload to manually sync)");
             getLogger().info("§e  - Version update reminders disabled");
         } else if (serverName.contains("purpur")) {
             getLogger().info(getMessage("server.detected.purpur"));
@@ -595,13 +589,17 @@ public class VerifyMC extends JavaPlugin implements Listener {
                     }
                 } catch (Exception ignored) {}
             }
-        }.runTaskTimerAsynchronously(this, 40L, 100L); // Check every 5 seconds
+        }.runTaskTimer(this, 40L, 100L); // Check every 5 seconds on main thread
     }
 
     /**
      * Synchronize whitelist.json to plugin data
      */
     private void syncWhitelistJsonToPlugin() {
+        if (!Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTask(this, this::syncWhitelistJsonToPlugin);
+            return;
+        }
         try {
             List<String> lines = Files.readAllLines(whitelistJsonPath);
             String json = String.join("\n", lines);
