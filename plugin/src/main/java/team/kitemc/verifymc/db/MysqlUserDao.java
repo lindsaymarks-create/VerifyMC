@@ -3,7 +3,6 @@ package team.kitemc.verifymc.db;
 import java.sql.*;
 import java.util.*;
 import org.bukkit.plugin.Plugin;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class MysqlUserDao implements UserDao {
     private final Connection conn;
@@ -117,12 +116,12 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status) {
+    public synchronized boolean registerUser(String uuid, String username, String email, String status) {
         return registerUser(uuid, username, email, status, null, null, null, null);
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status,
+    public synchronized boolean registerUser(String uuid, String username, String email, String status,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
         // First check if user already exists
@@ -169,12 +168,12 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status, String password) {
+    public synchronized boolean registerUser(String uuid, String username, String email, String status, String password) {
         return registerUser(uuid, username, email, status, password, null, null, null, null);
     }
 
     @Override
-    public boolean registerUser(String uuid, String username, String email, String status, String password,
+    public synchronized boolean registerUser(String uuid, String username, String email, String status, String password,
             Integer questionnaireScore, Boolean questionnairePassed,
             String questionnaireReviewSummary, Long questionnaireScoredAt) {
         // First check if user already exists
@@ -222,7 +221,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserStatus(String uuidOrName, String status) {
+    public synchronized boolean updateUserStatus(String uuidOrName, String status) {
         String sql = "UPDATE users SET status=? WHERE uuid=? OR username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status);
@@ -238,7 +237,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserPassword(String uuidOrName, String password) {
+    public synchronized boolean updateUserPassword(String uuidOrName, String password) {
         String sql = "UPDATE users SET password=? WHERE uuid=? OR username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, password);
@@ -255,7 +254,7 @@ public class MysqlUserDao implements UserDao {
 
 
     @Override
-    public boolean updateUserEmail(String uuidOrName, String email) {
+    public synchronized boolean updateUserEmail(String uuidOrName, String email) {
         String sql = "UPDATE users SET email=? WHERE uuid=? OR username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, email);
@@ -271,7 +270,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public List<Map<String, Object>> getAllUsers() {
+    public synchronized List<Map<String, Object>> getAllUsers() {
         List<Map<String, Object>> result = new ArrayList<>();
         String sql = "SELECT * FROM users";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
@@ -297,7 +296,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public List<Map<String, Object>> getPendingUsers() {
+    public synchronized List<Map<String, Object>> getPendingUsers() {
         List<Map<String, Object>> result = new ArrayList<>();
         String sql = "SELECT * FROM users WHERE status='pending'";
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
@@ -323,7 +322,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public Map<String, Object> getUserByUuid(String uuid) {
+    public synchronized Map<String, Object> getUserByUuid(String uuid) {
         String sql = "SELECT * FROM users WHERE uuid=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, uuid);
@@ -351,7 +350,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public Map<String, Object> getUserByUsername(String username) {
+    public synchronized Map<String, Object> getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE LOWER(username)=LOWER(?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
@@ -379,7 +378,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean deleteUser(String uuidOrName) {
+    public synchronized boolean deleteUser(String uuidOrName) {
         String sql = "DELETE FROM users WHERE uuid=? OR username=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, uuidOrName);
@@ -394,7 +393,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public int countUsersByEmail(String email) {
+    public synchronized int countUsersByEmail(String email) {
         int count = 0;
         String sql = "SELECT COUNT(*) FROM users WHERE LOWER(email)=LOWER(?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -411,13 +410,13 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public void save() {
+    public synchronized void save() {
         // MySQL implementation can be empty or just log message
         debugLog("MySQL storage: save() called (no-op)");
     }
 
     @Override
-    public List<Map<String, Object>> getUsersWithPagination(int page, int pageSize) {
+    public synchronized List<Map<String, Object>> getUsersWithPagination(int page, int pageSize) {
         debugLog("Getting users with pagination: page=" + page + ", pageSize=" + pageSize);
         List<Map<String, Object>> result = new ArrayList<>();
         int offset = (page - 1) * pageSize;
@@ -452,7 +451,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public int getTotalUserCount() {
+    public synchronized int getTotalUserCount() {
         debugLog("Getting total user count");
         int count = 0;
         String sql = "SELECT COUNT(*) FROM users";
@@ -469,7 +468,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public List<Map<String, Object>> getUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery) {
+    public synchronized List<Map<String, Object>> getUsersWithPaginationAndSearch(int page, int pageSize, String searchQuery) {
         debugLog("Getting users with pagination and search: page=" + page + ", pageSize=" + pageSize + ", query="
                 + searchQuery);
         List<Map<String, Object>> result = new ArrayList<>();
@@ -520,7 +519,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public int getTotalUserCountWithSearch(String searchQuery) {
+    public synchronized int getTotalUserCountWithSearch(String searchQuery) {
         debugLog("Getting total user count with search: query=" + searchQuery);
         int count = 0;
 
@@ -552,7 +551,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public int getApprovedUserCount() {
+    public synchronized int getApprovedUserCount() {
         debugLog("Getting approved user count (excluding pending)");
         int count = 0;
         String sql = "SELECT COUNT(*) FROM users WHERE status != 'pending'";
@@ -569,7 +568,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public int getApprovedUserCountWithSearch(String searchQuery) {
+    public synchronized int getApprovedUserCountWithSearch(String searchQuery) {
         debugLog("Getting approved user count with search: query=" + searchQuery);
         int count = 0;
 
@@ -601,7 +600,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public List<Map<String, Object>> getApprovedUsersWithPagination(int page, int pageSize) {
+    public synchronized List<Map<String, Object>> getApprovedUsersWithPagination(int page, int pageSize) {
         debugLog("Getting approved users with pagination: page=" + page + ", pageSize=" + pageSize);
         List<Map<String, Object>> result = new ArrayList<>();
         int offset = (page - 1) * pageSize;
@@ -636,7 +635,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public List<Map<String, Object>> getApprovedUsersWithPaginationAndSearch(int page, int pageSize,
+    public synchronized List<Map<String, Object>> getApprovedUsersWithPaginationAndSearch(int page, int pageSize,
             String searchQuery) {
         debugLog("Getting approved users with pagination and search: page=" + page + ", pageSize=" + pageSize
                 + ", query=" + searchQuery);
@@ -689,7 +688,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean updateUserDiscordId(String uuidOrName, String discordId) {
+    public synchronized boolean updateUserDiscordId(String uuidOrName, String discordId) {
         debugLog("updateUserDiscordId called: uuidOrName=" + uuidOrName + ", discordId=" + discordId);
         String sql = "UPDATE users SET discord_id=? WHERE uuid=? OR LOWER(username)=LOWER(?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -706,7 +705,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public Map<String, Object> getUserByDiscordId(String discordId) {
+    public synchronized Map<String, Object> getUserByDiscordId(String discordId) {
         debugLog("Getting user by Discord ID: " + discordId);
         String sql = "SELECT * FROM users WHERE discord_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -737,7 +736,7 @@ public class MysqlUserDao implements UserDao {
     }
 
     @Override
-    public boolean isDiscordIdLinked(String discordId) {
+    public synchronized boolean isDiscordIdLinked(String discordId) {
         debugLog("Checking if Discord ID is linked: " + discordId);
         return getUserByDiscordId(discordId) != null;
     }
