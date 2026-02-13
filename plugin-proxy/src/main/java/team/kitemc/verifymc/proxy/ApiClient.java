@@ -18,6 +18,8 @@ import java.util.logging.Logger;
  * HTTP API client for communicating with VerifyMC backend
  */
 public class ApiClient {
+    private static final String API_KEY_HEADER = "X-API-Key";
+
     private final ProxyConfig config;
     private final Logger logger;
     private final Gson gson = new Gson();
@@ -69,7 +71,7 @@ public class ApiClient {
             // Add API key header if configured
             String apiKey = config.getApiKey();
             if (apiKey != null && !apiKey.isEmpty()) {
-                conn.setRequestProperty("X-API-Key", apiKey);
+                conn.setRequestProperty(API_KEY_HEADER, apiKey);
             }
             
             int responseCode = conn.getResponseCode();

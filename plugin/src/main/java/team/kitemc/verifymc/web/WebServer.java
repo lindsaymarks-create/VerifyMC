@@ -200,6 +200,14 @@ public class WebServer {
         }
     }
 
+    private boolean isValidApiKey(HttpExchange exchange) {
+        String configuredApiKey = plugin.getConfig().getString("web.api_key", "");
+        String requestApiKey = exchange.getRequestHeaders().getFirst("X-API-Key");
+        return configuredApiKey != null
+            && !configuredApiKey.isBlank()
+            && configuredApiKey.equals(requestApiKey);
+    }
+
 
     private Map<String, Object> ensureLocalApprovedUserFromAuthme(String username) {
         if (!authmeService.isAuthmeEnabled() || username == null || username.trim().isEmpty()) {
@@ -624,6 +632,14 @@ public class WebServer {
                 exchange.close(); 
                 return; 
             }
+
+            if (!isValidApiKey(exchange)) {
+                JSONObject resp = new JSONObject();
+                resp.put("success", false);
+                resp.put("msg", "Unauthorized");
+                sendJson(exchange, resp, 401);
+                return;
+            }
             
             String query = exchange.getRequestURI().getQuery();
             String username = null;
@@ -653,7 +669,6 @@ public class WebServer {
                 resp.put("found", true);
                 resp.put("username", user.get("username"));
                 resp.put("status", user.get("status"));
-                resp.put("email", resolveUserEmail(user));
                 debugLog("Whitelist check for " + username + ": found, status=" + user.get("status"));
             } else {
                 resp.put("success", true);
@@ -2267,10 +2282,14 @@ public class WebServer {
     }
 
     private void sendJson(HttpExchange exchange, JSONObject resp) throws IOException {
+        sendJson(exchange, resp, 200);
+    }
+
+    private void sendJson(HttpExchange exchange, JSONObject resp, int statusCode) throws IOException {
         JSONObject withCopy = withCopyright(resp);
         byte[] data = withCopy.toString().getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().add("Content-Type", "application/json; charset=utf-8");
-        exchange.sendResponseHeaders(200, data.length);
+        exchange.sendResponseHeaders(statusCode, data.length);
         exchange.getResponseBody().write(data);
         exchange.close();
     }
