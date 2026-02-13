@@ -107,6 +107,9 @@ debug: false
 web_port: 8080
 # The server name displayed on the web interface.
 web_server_prefix: '[ Name ]'
+# API key required by /api/check-whitelist for proxy access. Keep this endpoint internal only; do not expose it directly to the public internet.
+web:
+  api_key: ""
 
 # ----------------------------------------
 # Verification & Whitelist

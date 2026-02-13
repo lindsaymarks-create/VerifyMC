@@ -13,6 +13,9 @@ debug: false
 web_port: 8080
 # 显示在网页界面上的服务器名称。
 web_server_prefix: '[ Name ]'
+# /api/check-whitelist 供代理访问时使用的 API Key。请仅在内网或受保护网络中开放该接口，不要直接暴露到公网。
+web:
+  api_key: ""
 
 # ----------------------------------------
 # 验证与白名单
